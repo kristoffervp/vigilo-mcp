@@ -19,6 +19,40 @@ test('invalid identifiers and dates are rejected before any network call', async
   await assert.rejects(portal.listNews({ child_id: 'safe', from_date: 'yesterday' }), /from_date/);
   await assert.rejects(portal.listNews({ child_id: 'safe', from_date: '2026-02-30' }), /from_date/);
   await assert.rejects(portal.listNews({ child_id: 'safe', from_date: '2020-01-01', to_date: '2022-01-01' }), /366/);
+  await assert.rejects(portal.getAfterSchoolStatus({ child_id: '../other' }), /child_id/);
+  await assert.rejects(portal.getAfterSchoolStatus({ child_id: 'safe', date: '2026-02-30' }), /date/);
+});
+
+test('AKS status uses the latest valid registration and never exposes unrelated fields', async () => {
+  let requestedUrl;
+  const portal = new Portal({
+    sessionProvider: async () => ({ accessToken: 'test' }),
+    fetcher: async (url) => {
+      requestedUrl = url;
+      return new Response(JSON.stringify({ checkIns: [
+        { type: 'checkOut', time: '2026-10-07T15:00:00+02:00', privateNote: 'SECRET' },
+        { type: 'checkIn', time: '2026-10-07T08:00:00+02:00' },
+        { type: 'other', time: '2026-10-07T16:00:00+02:00' },
+      ], routines: [{ privateNote: 'SECRET' }] }));
+    },
+  });
+  const result = await portal.getAfterSchoolStatus({ child_id: 'child', date: '2026-10-07' });
+  assert.equal(requestedUrl.pathname, '/api/children/child/overview');
+  assert.equal(requestedUrl.searchParams.get('date'), '2026-10-07');
+  assert.deepEqual(result, { date: '2026-10-07', status: 'checked_out',
+    lastRegistrationAt: '2026-10-07T15:00:00+02:00', registeredEvents: 2 });
+  assert.equal(JSON.stringify(result).includes('SECRET'), false);
+});
+
+test('AKS status is unknown when no check-in or check-out is registered', async () => {
+  const portal = new Portal({
+    sessionProvider: async () => ({ accessToken: 'test' }),
+    fetcher: async () => new Response(JSON.stringify({ checkIns: [] })),
+  });
+  const result = await portal.getAfterSchoolStatus({ child_id: 'child', date: '2026-10-07' });
+  assert.equal(result.status, 'unknown');
+  assert.equal(result.lastRegistrationAt, null);
+  assert.equal(result.registeredEvents, 0);
 });
 
 test('message and news responses allow only selected fields and cap item counts', async () => {

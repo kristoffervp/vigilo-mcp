@@ -21,6 +21,10 @@ const tools = [
       from_date: { type: 'string', description: 'YYYY-MM-DD; standard 90 dager tilbake' },
       to_date: { type: 'string', description: 'YYYY-MM-DD; standard i morgen' } },
       required: ['child_id'], additionalProperties: false } },
+  { name: 'get_after_school_status', description: 'Les siste registrerte inn-/utsjekk for ett barn på AKS/SFO. Manglende registrering gir ukjent status; dette er ikke en garanti for faktisk oppholdssted.',
+    inputSchema: { type: 'object', properties: {
+      child_id: { type: 'string' }, date: { type: 'string', description: 'YYYY-MM-DD; standard dagens dato i Norge' },
+    }, required: ['child_id'], additionalProperties: false } },
   { name: 'get_message_attachment', description: 'Last ned et vedlegg til lokal, privat mappe og returner filsti. Maks 10 MB.',
     inputSchema: { type: 'object', properties: { thread_id: { type: 'string' }, attachment_id: { type: 'string' } },
       required: ['thread_id', 'attachment_id'], additionalProperties: false } },
@@ -55,6 +59,7 @@ async function handle(request) {
       else if (params.name === 'list_message_threads') value = await portal.listMessageThreads(args);
       else if (params.name === 'get_message_thread') value = await portal.getMessageThread(args);
       else if (params.name === 'list_news') value = await portal.listNews(args);
+      else if (params.name === 'get_after_school_status') value = await portal.getAfterSchoolStatus(args);
       else if (params.name === 'get_message_attachment') value = await portal.getMessageAttachment(args);
       else return error(id, -32602, 'Unknown tool');
       return result(id, toolResult(value));

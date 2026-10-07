@@ -24,10 +24,11 @@ test('MCP server initializes and marks the local download separately', async () 
   child.stdin.end();
   assert.equal(replies[0].result.protocolVersion, '2025-06-18');
   assert.deepEqual(replies[1].result.tools.map((tool) => tool.name), [
-    'list_children', 'list_message_threads', 'get_message_thread', 'list_news', 'get_message_attachment',
+    'list_children', 'list_message_threads', 'get_message_thread', 'list_news',
+    'get_after_school_status', 'get_message_attachment',
   ]);
-  assert.ok(replies[1].result.tools.slice(0, 4).every((tool) => tool.annotations.readOnlyHint));
-  assert.equal(replies[1].result.tools[4].annotations.readOnlyHint, false);
+  assert.ok(replies[1].result.tools.slice(0, 5).every((tool) => tool.annotations.readOnlyHint));
+  assert.equal(replies[1].result.tools[5].annotations.readOnlyHint, false);
 });
 
 test('MCP rejects oversized input and never echoes a malformed token file', async () => {

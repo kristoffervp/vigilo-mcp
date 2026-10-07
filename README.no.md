@@ -2,7 +2,7 @@
 
 Norsk · [English](README.md)
 
-Les Vigilos foreldreportal med en lokal MCP-server som kun henter informasjon. Den kan vise barn og skole- eller AKS/SFO-enheter, liste og lese meldingstråder, vise oppslag og laste ned meldingsvedlegg. Den kan ikke sende meldinger eller endre data i Vigilo.
+Les Vigilos foreldreportal med en lokal MCP-server som kun henter informasjon. Den kan vise barn og skole- eller AKS/SFO-enheter, liste og lese meldingstråder, vise oppslag, lese registrert innkryssingsstatus på AKS/SFO og laste ned meldingsvedlegg. Den kan ikke sende meldinger eller endre data i Vigilo.
 
 **Kun testet på macOS med Google Chrome.** Andre plattformer og nettlesere er ikke testet. Prosjektet bruker udokumenterte Vigilo-endepunkter som kan endres.
 
@@ -40,9 +40,12 @@ Lagre og start klienten på nytt, og kontroller at `vigilo-local-mcp` er tilkobl
 | `list_message_threads` | List tråder for ett barn, inkludert AKS/SFO som standard |
 | `get_message_thread` | Les en tråd uten å endre lesestatus |
 | `list_news` | Vis oppslag for ett barn |
+| `get_after_school_status` | Les siste registrerte inn- eller utsjekk for ett barn og én dato |
 | `get_message_attachment` | Last ned vedlegg til privat `.data/downloads/` og returner filstien |
 
 Tråder og oppslag hentes som standard for de siste 90 dagene. `from_date` og `to_date` bruker `YYYY-MM-DD`, med maksimalt 366 dager per kall. Lister viser maks 50 elementer og merker avkorting. Vedlegg er begrenset til 10 MB. Lange tekster kan forkortes og merkes.
+
+For `get_after_school_status`: Bruk først `list_children` til å finne barnets `id` og se at det har en `afterSchool`-enhet. Oppgi ID-en som `child_id`; `date` er valgfri og er dagens dato i Norge som standard. Svaret er `checked_in`, `checked_out` eller `unknown`, med tidspunkt for siste registrering. `unknown` betyr at ingen brukbar registrering ble funnet. Svaret viser det personalet har registrert i Vigilo, og kan henge etter barnets faktiske oppholdssted.
 
 ## Sikkerhet og personvern
 

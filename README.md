@@ -2,7 +2,7 @@
 
 English · [Norsk](README.no.md)
 
-Read Vigilo's parent portal through a local, read-only MCP server. It can list children and their school or after-school units, list and read message threads, list news, and download message attachments. It cannot send messages or change Vigilo data.
+Read Vigilo's parent portal through a local, read-only MCP server. It can list children and their school or after-school units, list and read message threads, list news, check registered after-school check-in status, and download message attachments. It cannot send messages or change Vigilo data.
 
 **Tested only on macOS with Google Chrome.** Other platforms and browsers have not been tested. This project uses undocumented Vigilo endpoints that may change.
 
@@ -40,9 +40,12 @@ Save and restart the client, then check that `vigilo-local-mcp` is connected. `n
 | `list_message_threads` | List threads for one child, including after-school units by default |
 | `get_message_thread` | Read a thread without changing read status |
 | `list_news` | List news for one child |
+| `get_after_school_status` | Read the latest registered SFO/AKS check-in or check-out for one child and date |
 | `get_message_attachment` | Download an attachment to private `.data/downloads/` and return its path |
 
 Threads and news default to the last 90 days. `from_date` and `to_date` accept `YYYY-MM-DD`, with a maximum range of 366 days per request. Lists return at most 50 entries and indicate truncation. Attachments are limited to 10 MB. Long text may be shortened and marked as such.
+
+For `get_after_school_status`, first use `list_children` to find the child's `id` and confirm an `afterSchool` unit. Pass that ID as `child_id`; `date` is optional and defaults to today's date in Norway. The result is `checked_in`, `checked_out`, or `unknown`, with the time of the latest registration. `unknown` means no usable registration was returned. The result reflects what staff registered in Vigilo and may lag behind the child's actual location.
 
 ## Privacy and security
 

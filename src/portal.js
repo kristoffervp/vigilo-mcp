@@ -108,6 +108,12 @@ function dateValue(value, name) {
   return value;
 }
 
+function osloToday() {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Oslo', year: 'numeric', month: '2-digit', day: '2-digit',
+  }).format(new Date());
+}
+
 function dateRange(fromDate, toDate) {
   const from = dateValue(fromDate, 'from_date') || new Date(Date.now() - 90 * dayMs).toISOString().slice(0, 10);
   const to = dateValue(toDate, 'to_date') || new Date(Date.now() + dayMs).toISOString().slice(0, 10);
@@ -202,6 +208,24 @@ export class Portal {
     if (!Array.isArray(data)) throw new Error('Uventet svar for oppslag.');
     return { items: data.slice(0, maxItems).map(newsItem),
       total: data.length, truncated: data.length > maxItems };
+  }
+
+  async getAfterSchoolStatus({ child_id, date } = {}) {
+    const childId = segment(child_id, 'child_id');
+    const selectedDate = dateValue(date, 'date') || osloToday();
+    const data = await this.#request(`/children/${childId}/overview`, { date: selectedDate });
+    if (!Array.isArray(data?.checkIns)) throw new Error('Uventet svar for inn- og utsjekk.');
+    const events = data.checkIns.filter((event) =>
+      (event?.type === 'checkIn' || event?.type === 'checkOut') &&
+      typeof event.time === 'string' && Number.isFinite(Date.parse(event.time)));
+    events.sort((a, b) => Date.parse(a.time) - Date.parse(b.time));
+    const last = events.at(-1);
+    return {
+      date: selectedDate,
+      status: last ? (last.type === 'checkIn' ? 'checked_in' : 'checked_out') : 'unknown',
+      lastRegistrationAt: last?.time || null,
+      registeredEvents: events.length,
+    };
   }
 
   async getMessageAttachment({ thread_id, attachment_id } = {}) {
