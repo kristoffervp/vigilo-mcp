@@ -19,7 +19,7 @@ export function publicFailure(cause) {
   if (message.includes('npm run login') || message.includes('innlogging')) {
     return 'Vigilo-innloggingen må fornyes. Kjør npm run login på nytt.';
   }
-  if (/^(Ugyldig |from_date |to_date |date |Datoperioden |include_after_school )/.test(message)) {
+  if (/^(Ugyldig |from_date |to_date |date |Datoperioden |include_after_school |school_unit_id )/.test(message)) {
     return 'Ugyldige argumenter til Vigilo-verktøyet.';
   }
   if (message.includes('for stort') || message.includes('større enn')) {

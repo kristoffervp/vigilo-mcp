@@ -114,6 +114,42 @@ function osloToday() {
   }).format(new Date());
 }
 
+function isoWeekForDate(value) {
+  const monday = new Date(`${value}T00:00:00Z`);
+  monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
+  const thursday = new Date(monday);
+  thursday.setUTCDate(thursday.getUTCDate() + 3);
+  const year = thursday.getUTCFullYear();
+  const firstMonday = new Date(Date.UTC(year, 0, 4));
+  firstMonday.setUTCDate(firstMonday.getUTCDate() - ((firstMonday.getUTCDay() + 6) % 7));
+  const number = 1 + Math.round((monday - firstMonday) / (7 * dayMs));
+  return { week: `${year}-${String(number).padStart(2, '0')}`, monday };
+}
+
+function scheduleItem(value, kind, monday) {
+  const day = value?.dayOfWeek;
+  if (!Number.isInteger(day) || day < 1 || day > 7) return null;
+  const start = value?.startTime;
+  const end = value?.endTime;
+  if (typeof start !== 'string' || !/^\d{2}:\d{2}:\d{2}$/.test(start) ||
+      typeof end !== 'string' || !/^\d{2}:\d{2}:\d{2}$/.test(end)) return null;
+  const date = new Date(monday);
+  date.setUTCDate(date.getUTCDate() + day - 1);
+  const result = { date: date.toISOString().slice(0, 10), startTime: start.slice(0, 5),
+    endTime: end === '00:00:00' && kind === 'event' ? '23:59' : end.slice(0, 5), kind };
+  const title = kind === 'lesson'
+    ? value.subject?.name || value.subject?.shortName || value.schedulingType?.name
+    : value.description || value.schedulingType?.name;
+  if (typeof title === 'string') result.title = title.slice(0, 1_024);
+  if (kind === 'lesson') {
+    if (typeof value.group?.name === 'string') result.group = value.group.name.slice(0, 1_024);
+    if (typeof value.room?.name === 'string') result.room = value.room.name.slice(0, 1_024);
+    const teacher = value.substituteEmployee?.alias || value.employee?.alias;
+    if (typeof teacher === 'string') result.teacher = teacher.slice(0, 1_024);
+  }
+  return result;
+}
+
 function dateRange(fromDate, toDate) {
   const from = dateValue(fromDate, 'from_date') || new Date(Date.now() - 90 * dayMs).toISOString().slice(0, 10);
   const to = dateValue(toDate, 'to_date') || new Date(Date.now() + dayMs).toISOString().slice(0, 10);
@@ -226,6 +262,30 @@ export class Portal {
       lastRegistrationAt: last?.time || null,
       registeredEvents: events.length,
     };
+  }
+
+  async getSchedule({ child_id, date, school_unit_id } = {}) {
+    const childId = segment(child_id, 'child_id');
+    const selectedDate = dateValue(date, 'date') || osloToday();
+    const requestedUnit = school_unit_id === undefined ? undefined : segment(school_unit_id, 'school_unit_id');
+    const children = await this.listChildren();
+    const child = children.find((item) => item.id === childId);
+    if (!child) throw new Error('Barnet finnes ikke på kontoen.');
+    const schools = child.organizationalUnits.filter((item) => item.type === 'school');
+    const school = requestedUnit ? schools.find((item) => item.id === requestedUnit) : schools[0];
+    if (!school) throw new Error('Ingen tilgjengelig skoleenhet for barnet.');
+    const { week, monday } = isoWeekForDate(selectedDate);
+    const query = { week, organizationalUnitId: school.id };
+    const lessons = await this.#request(`/students/${childId}/lessons`, query);
+    const events = await this.#request(`/scheduling-events/${childId}/student`, query);
+    if (!Array.isArray(lessons) || !Array.isArray(events)) throw new Error('Uventet svar for timeplan.');
+    const items = [
+      ...lessons.map((item) => scheduleItem(item, 'lesson', monday)),
+      ...events.map((item) => scheduleItem(item, 'event', monday)),
+    ].filter(Boolean).sort((a, b) =>
+      a.date.localeCompare(b.date) || a.startTime.localeCompare(b.startTime));
+    return { week, schoolUnit: unit(school), items: items.slice(0, maxItems),
+      total: items.length, truncated: items.length > maxItems };
   }
 
   async getMessageAttachment({ thread_id, attachment_id } = {}) {
