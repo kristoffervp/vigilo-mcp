@@ -1,0 +1,26 @@
+# Explicit public-file allowlist. Private sessions and local files stay out of Git.
+/*
+!/.gitignore
+!/LICENSE
+!/README.md
+!/README.no.md
+!/package.json
+!/package-lock.json
+!/src/
+/src/*
+!/src/browser.js
+!/src/login.js
+!/src/login-mobile.js
+!/src/mcp-format.js
+!/src/mobile-auth.js
+!/src/oauth.js
+!/src/portal.js
+!/src/server.js
+!/src/session.js
+!/test/
+/test/*
+!/test/mcp-format.test.js
+!/test/mobile-auth.test.js
+!/test/oauth.test.js
+!/test/portal.test.js
+!/test/server.test.js

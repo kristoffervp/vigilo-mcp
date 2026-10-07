@@ -1,0 +1,18 @@
+{
+  "name": "vigilo-local-mcp",
+  "version": "0.1.0",
+  "license": "0BSD",
+  "private": true,
+  "type": "module",
+  "description": "Lokal, lesende Vigilo MCP med innlogging via Chrome og ID-porten",
+  "scripts": {
+    "login": "node src/login-mobile.js",
+    "login:browser": "node src/login.js",
+    "login:renewable": "node src/login-mobile.js",
+    "start": "node src/server.js",
+    "test": "node --test"
+  },
+  "dependencies": {
+    "playwright": "1.63.0"
+  }
+}
