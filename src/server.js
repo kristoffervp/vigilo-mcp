@@ -53,7 +53,7 @@ async function handle(request) {
     if (method === 'initialize') {
       const requested = params.protocolVersion;
       return result(id, { protocolVersion: supportedVersions.has(requested) ? requested : '2025-11-25',
-        capabilities: { tools: {} }, serverInfo: { name: 'vigilo-local-mcp', version: '0.1.0' } });
+        capabilities: { tools: {} }, serverInfo: { name: 'vigilo-local-mcp', version: '0.2.0' } });
     }
     if (method === 'ping') return result(id, {});
     if (method === 'tools/list') return result(id, { tools });

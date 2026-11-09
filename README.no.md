@@ -4,7 +4,7 @@ Norsk · [English](README.md)
 
 Les Vigilos foreldreportal med en lokal MCP-server som kun henter informasjon. Den kan vise barn og skole- eller AKS/SFO-enheter, liste og lese meldingstråder, vise oppslag og timeplan, lese registrert innkryssingsstatus på AKS/SFO og laste ned meldingsvedlegg. Den kan ikke sende meldinger eller endre data i Vigilo.
 
-**Kun testet på macOS med Google Chrome.** Andre plattformer og nettlesere er ikke testet. Prosjektet bruker udokumenterte Vigilo-endepunkter som kan endres.
+**Testet på macOS med Google Chrome.** Serveren kjører også på Linux (testet på Raspberry Pi OS) med en fornybar innlogging gjort på en annen maskin og kopiert til `.data/`. Innlogging på Linux, Windows og i andre nettlesere er ikke testet. Prosjektet bruker udokumenterte Vigilo-endepunkter som kan endres.
 
 ## Installer
 
@@ -55,6 +55,15 @@ For `get_schedule`: Oppgi en `child_id` fra `list_children`. Valgfri `date` (`YY
 Serveren kjører lokalt via stdio og åpner ingen lyttende nettverksport. En tilkoblet KI-klient kan hente Vigilo-informasjonen du ber om. Innhold brukt med en skybasert KI-tjeneste kan bli sendt dit. Behandle meldinger og oppslag som ikke-betrodd innhold, se gjennom verktøykall og bruk en klient du stoler på.
 
 Økter, nettleserprofiler, nedlastinger og OAuth-oppsett hører hjemme i `.data/` og må holdes private. Tillatelseslisten i `.gitignore` holder lokale data og maskinspesifikke filer unna en bred `git add .`.
+
+## Endringslogg
+
+### 0.2.0 (2026-11-09)
+- Fornybar innlogging virker på Linux, for eksempel på en Raspberry Pi. Låsen rundt økten bruker `flock` på Linux; macOS bruker fortsatt `lockf`. Før dette feilet Vigilo-kall på Linux så snart det første tokenet gikk ut.
+
+### 0.1.0 (2026-10-07)
+- Første offentlige versjon: `list_children`, `list_message_threads`, `get_message_thread`, `list_news` og `get_message_attachment`.
+- Lagt til samme dag: `get_after_school_status` (inn- og utkryssing på AKS) og `get_schedule` (timeplan).
 
 ## Lisens
 

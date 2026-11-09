@@ -99,8 +99,9 @@ async function withSessionLock(action) {
   const file = await open(lockPath, 'a', 0o600);
   await file.close();
   await chmod(lockPath, 0o600);
-  const holder = spawn('/usr/bin/lockf', [
-    '-t', '30', lockPath, '/bin/sh', '-c', 'printf "READY\\n"; IFS= read -r _',
+  const [lockCommand, timeoutFlag] = process.platform === 'linux' ? ['/usr/bin/flock', '-w'] : ['/usr/bin/lockf', '-t'];
+  const holder = spawn(lockCommand, [
+    timeoutFlag, '30', lockPath, '/bin/sh', '-c', 'printf "READY\\n"; IFS= read -r _',
   ], { stdio: ['pipe', 'pipe', 'ignore'] });
   try {
     await new Promise((resolve, reject) => {

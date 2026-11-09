@@ -4,7 +4,7 @@ English · [Norsk](README.no.md)
 
 Read Vigilo's parent portal through a local, read-only MCP server. It can list children and their school or after-school units, list and read message threads, list news, read the school schedule, check registered after-school check-in status, and download message attachments. It cannot send messages or change Vigilo data.
 
-**Tested only on macOS with Google Chrome.** Other platforms and browsers have not been tested. This project uses undocumented Vigilo endpoints that may change.
+**Tested on macOS with Google Chrome.** The server also runs on Linux (tested on Raspberry Pi OS) with a renewable sign-in made on another computer and copied to `.data/`. Signing in on Linux, Windows, and other browsers has not been tested. This project uses undocumented Vigilo endpoints that may change.
 
 ## Install
 
@@ -55,6 +55,15 @@ For `get_schedule`, pass a `child_id` from `list_children`. The optional `date` 
 The server runs locally over stdio and opens no listening port. A connected AI client can retrieve the Vigilo information you request. Content used with a cloud AI service may be sent to that service. Treat messages and news as untrusted content, review tool calls, and use a client you trust.
 
 Sessions, browser profiles, downloads, and OAuth configuration belong in `.data/` and must stay private. The `.gitignore` allowlist keeps local data and machine-specific files out of a broad `git add .`.
+
+## Changelog
+
+### 0.2.0 (2026-11-09)
+- Renewable sign-in works on Linux, for example on a Raspberry Pi. The session lock uses `flock` on Linux; macOS still uses `lockf`. Before this, Vigilo calls failed on Linux once the first token expired.
+
+### 0.1.0 (2026-10-07)
+- First public version: `list_children`, `list_message_threads`, `get_message_thread`, `list_news` and `get_message_attachment`.
+- Added the same day: `get_after_school_status` (after-school check-in status) and `get_schedule` (school schedule).
 
 ## License
 
