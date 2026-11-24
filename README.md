@@ -1,70 +1,133 @@
-# Vigilo MCP
+<h1 align="center">Vigilo MCP</h1>
 
-English · [Norsk](README.no.md)
+<p align="center">
+  <a href="https://github.com/kristoffervp/vigilo-mcp/actions/workflows/test.yml"><img src="https://github.com/kristoffervp/vigilo-mcp/actions/workflows/test.yml/badge.svg" alt="Test"></a>
+  <a href="https://github.com/kristoffervp/vigilo-mcp/releases"><img src="https://img.shields.io/github/v/release/kristoffervp/vigilo-mcp" alt="Release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-0BSD-blue" alt="License: 0BSD"></a>
+</p>
 
-Read Vigilo's parent portal through a local, read-only MCP server. It can list children and their school or after-school units, list and read message threads, list news, read the school schedule, check registered after-school check-in status, and download message attachments. It cannot send messages or change Vigilo data.
+<p align="center">English · <a href="README.no.md">Norsk</a></p>
 
-**Tested on macOS with Google Chrome.** The server also runs on Linux (tested on Raspberry Pi OS) with a renewable sign-in made on another computer and copied to `.data/`. Signing in on Linux, Windows, and other browsers has not been tested. This project uses undocumented Vigilo endpoints that may change.
+A local MCP server that lets an AI client read Vigilo's parent portal: messages, news, the school schedule, after-school check-ins and message attachments. It only reads, and cannot send messages or change anything in Vigilo.
 
-## Install
+**Unofficial.** Not made by or affiliated with Vigilo AS, the school or the municipality. It uses undocumented endpoints that can change without notice.
 
-Install Node.js 20 or later and Google Chrome. Download or clone this repository, open its folder in Terminal, and run:
+## Quick start
+
+You need Node.js 20 or later and Google Chrome. Sign-in is tested on macOS.
 
 ```sh
-npm ci
+git clone https://github.com/kristoffervp/vigilo-mcp.git
+cd vigilo-mcp
+npm install
 npm run login:browser
 ```
 
-Complete ID-porten sign-in in Chrome. Choose your affiliation and open **Foreldreportal** if prompted. The session is saved in the private `.data/` folder. Browser sign-in is short-lived; repeat `npm run login:browser` when it expires. Run `npm test` to check the project without using your account.
+`npm run login:browser` opens Chrome for the ID-porten sign-in, and `npm test` checks the server without using your account. Then add the server to your AI client as a local (stdio) server. For Claude Desktop, in `claude_desktop_config.json`:
 
-Optional renewable sign-in uses `npm run login` or `npm run login:renewable`. It **requires** a private `.data/mobile-client.json` with Vigilo app OAuth configuration, which is not included here. Without that file, use `login:browser`. Never publish your configuration or copy someone else's. Vigilo controls the session lifetime.
-
-## Connect a local MCP client
-
-Add a **stdio MCP server** in your client:
-
-| Field | Value |
-| --- | --- |
-| Command | Absolute path to Node.js; find it with `command -v node` |
-| Arguments | One argument: absolute path to this project's `src/server.js` |
-| Working directory | Absolute path to this project folder |
-| Environment variables | None required |
-
-Save and restart the client, then check that `vigilo-local-mcp` is connected. `npm start` starts the server directly. A browser chat cannot launch a local stdio process by itself; follow your client's connection instructions.
+```json
+{
+  "mcpServers": {
+    "vigilo": {
+      "command": "node",
+      "args": ["/full/path/to/vigilo-mcp/src/server.js"]
+    }
+  }
+}
+```
 
 ## Tools
 
-| Tool | Purpose |
+| Tool | What it does |
 | --- | --- |
-| `list_children` | List children and units |
-| `list_message_threads` | List threads for one child, including after-school units by default |
-| `get_message_thread` | Read a thread without changing read status |
-| `list_news` | List news for one child |
-| `get_after_school_status` | Read the latest registered SFO/AKS check-in or check-out for one child and date |
-| `get_schedule` | Read the school timetable and calendar events for the week containing a date |
-| `get_message_attachment` | Download an attachment to private `.data/downloads/` and return its path |
+| `list_children` | Your children and their school and after-school units |
+| `list_message_threads` | Message threads for one child, after-school units included unless `include_after_school` is `false`. Filters: `from_date`, `to_date` |
+| `get_message_thread` | One thread with its messages, without changing the read status |
+| `list_news` | News posts for one child. Filters: `from_date`, `to_date` |
+| `get_after_school_status` | The latest registered SFO/AKS check-in or check-out for one child on a `date` |
+| `get_schedule` | Lessons and calendar events for the week that contains `date` |
+| `get_message_attachment` | Saves a message attachment in `.data/downloads/` and returns the path |
 
-Threads and news default to the last 90 days. `from_date` and `to_date` accept `YYYY-MM-DD`, with a maximum range of 366 days per request. Lists return at most 50 entries and indicate truncation. Attachments are limited to 10 MB. Long text may be shortened and marked as such.
+Start with `list_children`. The other tools take a child's `id` as `child_id`, and `get_schedule` can take a school unit's `id` as `school_unit_id`. Without it, the child's first school unit is used.
 
-For `get_after_school_status`, first use `list_children` to find the child's `id` and confirm an `afterSchool` unit. Pass that ID as `child_id`; `date` is optional and defaults to today's date in Norway. The result is `checked_in`, `checked_out`, or `unknown`, with the time of the latest registration. `unknown` means no usable registration was returned. The result reflects what staff registered in Vigilo and may lag behind the child's actual location.
+Threads and news cover the last 90 days up to tomorrow, unless you set `from_date` and `to_date` (`YYYY-MM-DD`, at most 366 days apart). `date` defaults to today in Norway. Lists return at most 50 entries, with `total` and `truncated`, and a thread shows its last 50 messages. Text longer than 20,000 characters is cut and marked `textTruncated`. Results are returned as `structuredContent` and as JSON text.
 
-For `get_schedule`, pass a `child_id` from `list_children`. The optional `date` (`YYYY-MM-DD`) selects its ISO week and defaults to today's date in Norway. If the child has more than one school unit, pass `school_unit_id` from `list_children` to choose one; otherwise the first school unit is used. The result combines lessons and calendar events, with local dates and times as shown in Vigilo. It returns at most 50 entries and indicates truncation. Missing entries may mean that Vigilo has no schedule for that week.
+`get_after_school_status` returns `checked_in`, `checked_out` or `unknown`, with the time of the latest registration. It shows what staff registered in Vigilo, which can differ from where the child is.
 
-## Privacy and security
+`get_message_attachment` accepts files up to 10 MB and returns only the path, type and size, so the client must be able to read local files to open it. Types other than PDF, JPEG, PNG, plain text and Word (`.docx`) are saved with `.bin`.
 
-The server runs locally over stdio and opens no listening port. A connected AI client can retrieve the Vigilo information you request. Content used with a cloud AI service may be sent to that service. Treat messages and news as untrusted content, review tool calls, and use a client you trust.
+## Renewable sign-in (optional)
 
-Sessions, browser profiles, downloads, and OAuth configuration belong in `.data/` and must stay private. The `.gitignore` allowlist keeps local data and machine-specific files out of a broad `git add .`.
+The server renews the browser sign-in in headless Chrome for as long as Vigilo's web session allows. After that, run `npm run login:browser` again.
+
+`npm run login` makes a sign-in that renews itself with a refresh token, like the Vigilo app. It needs a private `.data/mobile-client.json` with the app's OAuth settings (`clientId`, `clientSecret`, `redirectUri`, `authority`), which is not included. Never publish this file or use someone else's.
+
+- When `.data/mobile-session.json` exists, the server uses it instead of the browser sign-in.
+- A file lock stops two processes from renewing at the same time (`lockf` on macOS, `flock` on Linux).
+- The server also runs on Linux with a renewable sign-in made on another computer. Copy `mobile-client.json` and `mobile-session.json` to `.data/`. A renewal can replace the refresh token, so use the copy on one computer only.
+
+## How it works
+
+The server runs on your computer and talks to the AI client over stdio. It uses the renewable sign-in if there is one, and otherwise the browser sign-in, both saved in `.data/`. `mcp-format.js` marks every result as untrusted content from Vigilo and keeps error messages generic.
+
+```mermaid
+flowchart LR
+  client["AI client<br/>such as Claude Desktop"]
+  subgraph computer["Your computer"]
+    server["MCP server<br/>server.js, mcp-format.js"]
+    tools["Tools<br/>portal.js"]
+    signin["Sign-in in use and renewal<br/>session.js, mobile-auth.js"]
+    login["npm run login:browser, npm run login<br/>Chrome via Playwright<br/>login.js, login-mobile.js, oauth.js"]
+    data[(".data/<br/>sign-in, browser profiles,<br/>app settings, downloads")]
+  end
+  idporten["ID-porten"]
+  auth["Vigilo sign-in<br/>auth.prod.vigilo-oas.no"]
+  portal["Vigilo parent portal<br/>web-parent.prod.vigilo-oas.no"]
+  client <-->|"MCP over stdio"| server
+  server --> tools
+  tools --> signin
+  tools <-->|"HTTPS with the sign-in"| portal
+  signin -->|"renews the sign-in"| auth
+  signin -.->|"reads and saves the sign-in"| data
+  login -->|"sign in"| idporten
+  login -->|"Vigilo sign-in"| auth
+  login -->|"saves"| data
+  tools -.->|"saves attachments"| data
+```
+
+## Configuration
+
+Set these in the client config (and in Terminal for the login commands):
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `VIGILO_DATA_DIR` | `.data` in this folder | Sign-in, browser profiles, app settings and downloads |
+| `VIGILO_BROWSER_CHANNEL` | `chrome` | Browser for signing in and for renewing the browser sign-in |
+| `VIGILO_AUTH_DEBUG` | off | `1` makes `npm run login` print the hosts the sign-in passes through |
+
+## Troubleshooting
+
+- **"Vigilo-innloggingen må fornyes".** The sign-in is missing or has expired. Run `npm run login:browser` again, or `npm run login` if you use the renewable sign-in.
+- **"Vigilos appoppsett mangler" or "er ufullstendig".** `npm run login` needs a complete `.data/mobile-client.json`. Use `npm run login:browser` instead.
+- **"Innloggingen tok mer enn ti minutter".** Sign-in must finish within ten minutes. Choose your affiliation and open **Foreldreportal** if asked. The window closes when the portal has loaded.
+- **"Playwright mangler".** Run `npm install` in the project folder.
+- **The client can't start the server.** Use full paths for both `node` (from `command -v node`) and `src/server.js`.
+- **"Ugyldige argumenter til Vigilo-verktøyet".** An ID or a date has the wrong format. Use IDs from `list_children` and dates as `YYYY-MM-DD`.
+- **"Vigilo-svaret er for stort".** Use a shorter date range. Attachments over 10 MB are refused.
+- **"Vigilo-kallet kunne ikke fullføres".** Other errors are not shown in detail. Check the network and the IDs, and try again.
+
+## Security and privacy
+
+- The server runs on your computer and opens no network port. Any AI client you connect can still read what the tools return, and a cloud AI service receives what the client reads. Decide what you are willing to share.
+- Only selected fields from Vigilo are passed on, marked as data and not instructions. That can't stop every attempt to steer the AI through a message. Use clients you trust and review tool calls.
+- Error messages don't repeat Vigilo's responses or the content of local files.
+- `.data/` holds your sign-in and browser profiles, readable only by your user. Never share it. Attachments stay there until you delete them, and the paths returned to the client can include your user name.
+- To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
 ## Changelog
 
-### 0.2.0 (2026-11-09)
-- Renewable sign-in works on Linux, for example on a Raspberry Pi. The session lock uses `flock` on Linux; macOS still uses `lockf`. Before this, Vigilo calls failed on Linux once the first token expired.
-
-### 0.1.0 (2026-10-07)
-- First public version: `list_children`, `list_message_threads`, `get_message_thread`, `list_news` and `get_message_attachment`.
-- Added the same day: `get_after_school_status` (after-school check-in status) and `get_schedule` (school schedule).
+See [CHANGELOG.md](CHANGELOG.md) and [Releases](https://github.com/kristoffervp/vigilo-mcp/releases).
 
 ## License
 
-Code and documentation use the [0BSD license](LICENSE). This does not cover Vigilo's service or retrieved data.
+[0BSD](LICENSE): use, change and share it freely, also commercially, without attribution. It does not cover the Vigilo service or its data.

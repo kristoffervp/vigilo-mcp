@@ -1,70 +1,133 @@
-# Vigilo MCP
+<h1 align="center">Vigilo MCP</h1>
 
-Norsk · [English](README.md)
+<p align="center">
+  <a href="https://github.com/kristoffervp/vigilo-mcp/actions/workflows/test.yml"><img src="https://github.com/kristoffervp/vigilo-mcp/actions/workflows/test.yml/badge.svg" alt="Test"></a>
+  <a href="https://github.com/kristoffervp/vigilo-mcp/releases"><img src="https://img.shields.io/github/v/release/kristoffervp/vigilo-mcp" alt="Release"></a>
+  <a href="LICENSE"><img src="https://img.shields.io/badge/license-0BSD-blue" alt="Lisens: 0BSD"></a>
+</p>
 
-Les Vigilos foreldreportal med en lokal MCP-server som kun henter informasjon. Den kan vise barn og skole- eller AKS/SFO-enheter, liste og lese meldingstråder, vise oppslag og timeplan, lese registrert innkryssingsstatus på AKS/SFO og laste ned meldingsvedlegg. Den kan ikke sende meldinger eller endre data i Vigilo.
+<p align="center">Norsk · <a href="README.md">English</a></p>
 
-**Testet på macOS med Google Chrome.** Serveren kjører også på Linux (testet på Raspberry Pi OS) med en fornybar innlogging gjort på en annen maskin og kopiert til `.data/`. Innlogging på Linux, Windows og i andre nettlesere er ikke testet. Prosjektet bruker udokumenterte Vigilo-endepunkter som kan endres.
+En lokal MCP-server som lar en KI-klient lese Vigilos foreldreportal: meldinger, oppslag, timeplanen, inn- og utsjekk på AKS/SFO og meldingsvedlegg. Den leser bare, og kan ikke sende meldinger eller endre noe i Vigilo.
 
-## Installer
+**Uoffisiell.** Ikke laget av eller knyttet til Vigilo AS, skolen eller kommunen. Den bruker udokumenterte endepunkter som kan endres uten varsel.
 
-Installer Node.js 20 eller nyere og Google Chrome. Last ned eller klon prosjektet, åpne mappen i Terminal og kjør:
+## Kom i gang
+
+Du trenger Node.js 20 eller nyere og Google Chrome. Innloggingen er testet på macOS.
 
 ```sh
-npm ci
+git clone https://github.com/kristoffervp/vigilo-mcp.git
+cd vigilo-mcp
+npm install
 npm run login:browser
 ```
 
-Fullfør innloggingen via ID-porten i Chrome. Velg tilhørighet og åpne **Foreldreportal** hvis du blir bedt om det. Økten lagres i den private `.data/`-mappen. Nettleserinnloggingen er kortvarig; gjenta `npm run login:browser` når den utløper. Kjør `npm test` for å kontrollere prosjektet uten kontoen din.
+`npm run login:browser` åpner Chrome for innlogging med ID-porten, og `npm test` sjekker serveren uten å bruke kontoen din. Legg så til serveren i KI-klienten som en lokal (stdio) server. For Claude Desktop, i `claude_desktop_config.json`:
 
-Valgfri fornybar innlogging bruker `npm run login` eller `npm run login:renewable`. Den **krever** privat Vigilo-appoppsett i `.data/mobile-client.json`, som ikke følger med her. Bruk `login:browser` uten denne filen. Publiser aldri oppsettet ditt eller kopier andres. Vigilo bestemmer hvor lenge økten varer.
-
-## Koble til en lokal MCP-klient
-
-Legg til en **MCP-server via stdio** i klienten:
-
-| Felt | Verdi |
-| --- | --- |
-| Kommando | Fullstendig sti til Node.js; finn den med `command -v node` |
-| Argumenter | Ett argument: fullstendig sti til prosjektets `src/server.js` |
-| Arbeidsmappe | Fullstendig sti til prosjektmappen |
-| Miljøvariabler | Ingen påkrevd |
-
-Lagre og start klienten på nytt, og kontroller at `vigilo-local-mcp` er tilkoblet. `npm start` starter serveren direkte. En chat i nettleseren kan ikke starte en lokal stdio-prosess alene; følg klientens tilkoblingsveiledning.
+```json
+{
+  "mcpServers": {
+    "vigilo": {
+      "command": "node",
+      "args": ["/full/sti/til/vigilo-mcp/src/server.js"]
+    }
+  }
+}
+```
 
 ## Verktøy
 
-| Verktøy | Bruk |
+| Verktøy | Hva det gjør |
 | --- | --- |
-| `list_children` | Vis barn og enheter |
-| `list_message_threads` | List tråder for ett barn, inkludert AKS/SFO som standard |
-| `get_message_thread` | Les en tråd uten å endre lesestatus |
-| `list_news` | Vis oppslag for ett barn |
-| `get_after_school_status` | Les siste registrerte inn- eller utsjekk for ett barn og én dato |
-| `get_schedule` | Les skoletimer og kalenderhendelser for uken som inneholder en dato |
-| `get_message_attachment` | Last ned vedlegg til privat `.data/downloads/` og returner filstien |
+| `list_children` | Barna dine og skole- og AKS/SFO-enhetene deres |
+| `list_message_threads` | Meldingstråder for ett barn, med AKS/SFO med mindre `include_after_school` er `false`. Filtre: `from_date`, `to_date` |
+| `get_message_thread` | Én tråd med meldingene, uten å endre lesestatus |
+| `list_news` | Oppslag for ett barn. Filtre: `from_date`, `to_date` |
+| `get_after_school_status` | Siste registrerte inn- eller utsjekk på SFO/AKS for ett barn på en `date` |
+| `get_schedule` | Skoletimer og kalenderhendelser for uken som inneholder `date` |
+| `get_message_attachment` | Lagrer et meldingsvedlegg i `.data/downloads/` og gir stien |
 
-Tråder og oppslag hentes som standard for de siste 90 dagene. `from_date` og `to_date` bruker `YYYY-MM-DD`, med maksimalt 366 dager per kall. Lister viser maks 50 elementer og merker avkorting. Vedlegg er begrenset til 10 MB. Lange tekster kan forkortes og merkes.
+Begynn med `list_children`. De andre verktøyene tar barnets `id` som `child_id`, og `get_schedule` kan ta en skoleenhets `id` som `school_unit_id`. Uten den brukes barnets første skoleenhet.
 
-For `get_after_school_status`: Bruk først `list_children` til å finne barnets `id` og se at det har en `afterSchool`-enhet. Oppgi ID-en som `child_id`; `date` er valgfri og er dagens dato i Norge som standard. Svaret er `checked_in`, `checked_out` eller `unknown`, med tidspunkt for siste registrering. `unknown` betyr at ingen brukbar registrering ble funnet. Svaret viser det personalet har registrert i Vigilo, og kan henge etter barnets faktiske oppholdssted.
+Tråder og oppslag gjelder de siste 90 dagene fram til i morgen, med mindre du setter `from_date` og `to_date` (`ÅÅÅÅ-MM-DD`, høyst 366 dager mellom). `date` er dagens dato i Norge hvis den ikke er satt. Lister gir høyst 50 elementer, med `total` og `truncated`, og en tråd viser de siste 50 meldingene. Tekst over 20 000 tegn kuttes og merkes `textTruncated`. Svarene kommer som `structuredContent` og som JSON-tekst.
 
-For `get_schedule`: Oppgi en `child_id` fra `list_children`. Valgfri `date` (`YYYY-MM-DD`) velger uken datoen tilhører; standard er dagens dato i Norge. Har barnet flere skoleenheter, kan du velge med `school_unit_id` fra `list_children`; ellers brukes den første. Svaret kombinerer skoletimer og kalenderhendelser med lokale datoer og klokkeslett slik Vigilo viser dem. Det inneholder maks 50 oppføringer og merker avkorting. En tom uke kan bety at Vigilo ikke har noen timeplan for den uken.
+`get_after_school_status` gir `checked_in`, `checked_out` eller `unknown`, med tidspunktet for siste registrering. Den viser det personalet har registrert i Vigilo, og det kan avvike fra hvor barnet er.
+
+`get_message_attachment` tar filer opptil 10 MB og gir bare sti, type og størrelse, så klienten må kunne lese lokale filer for å åpne den. Andre typer enn PDF, JPEG, PNG, ren tekst og Word (`.docx`) lagres med `.bin`.
+
+## Fornybar innlogging (valgfritt)
+
+Serveren fornyer nettleserinnloggingen i Chrome uten vindu så lenge Vigilos nettøkt tillater det. Etter det kjører du `npm run login:browser` på nytt.
+
+`npm run login` lager en innlogging som fornyer seg selv med et fornyelsestoken, slik Vigilo-appen gjør. Den trenger en privat `.data/mobile-client.json` med appens OAuth-oppsett (`clientId`, `clientSecret`, `redirectUri`, `authority`), som ikke følger med. Publiser aldri denne filen, og bruk aldri andres.
+
+- Når `.data/mobile-session.json` finnes, bruker serveren den i stedet for nettleserinnloggingen.
+- En fillås hindrer at to prosesser fornyer samtidig (`lockf` på macOS, `flock` på Linux).
+- Serveren kjører også på Linux med en fornybar innlogging laget på en annen datamaskin. Kopier `mobile-client.json` og `mobile-session.json` til `.data/`. En fornyelse kan bytte ut fornyelsestokenet, så bruk kopien på bare én datamaskin.
+
+## Slik virker det
+
+Serveren kjører på datamaskinen din og snakker med KI-klienten over stdio. Den bruker den fornybare innloggingen hvis den finnes, og ellers nettleserinnloggingen, begge lagret i `.data/`. `mcp-format.js` merker hvert svar som ikke-betrodd innhold fra Vigilo og holder feilmeldingene generelle.
+
+```mermaid
+flowchart LR
+  client["KI-klient<br/>for eksempel Claude Desktop"]
+  subgraph computer["Din datamaskin"]
+    server["MCP-server<br/>server.js, mcp-format.js"]
+    tools["Verktøy<br/>portal.js"]
+    signin["Innlogging i bruk og fornyelse<br/>session.js, mobile-auth.js"]
+    login["npm run login:browser, npm run login<br/>Chrome via Playwright<br/>login.js, login-mobile.js, oauth.js"]
+    data[(".data/<br/>innlogging, nettleserprofiler,<br/>appoppsett, nedlastinger")]
+  end
+  idporten["ID-porten"]
+  auth["Vigilo-innlogging<br/>auth.prod.vigilo-oas.no"]
+  portal["Vigilos foreldreportal<br/>web-parent.prod.vigilo-oas.no"]
+  client <-->|"MCP over stdio"| server
+  server --> tools
+  tools --> signin
+  tools <-->|"HTTPS med innloggingen"| portal
+  signin -->|"fornyer innloggingen"| auth
+  signin -.->|"leser og lagrer innloggingen"| data
+  login -->|"logg inn"| idporten
+  login -->|"Vigilo-innlogging"| auth
+  login -->|"lagrer"| data
+  tools -.->|"lagrer vedlegg"| data
+```
+
+## Innstillinger
+
+Settes i klientoppsettet (og i Terminal for innloggingskommandoene):
+
+| Variabel | Standard | Brukes til |
+| --- | --- | --- |
+| `VIGILO_DATA_DIR` | `.data` i denne mappen | Innlogging, nettleserprofiler, appoppsett og nedlastinger |
+| `VIGILO_BROWSER_CHANNEL` | `chrome` | Nettleser for innlogging og for fornyelse av nettleserinnloggingen |
+| `VIGILO_AUTH_DEBUG` | av | `1` får `npm run login` til å skrive ut vertene innloggingen går gjennom |
+
+## Feilsøking
+
+- **«Vigilo-innloggingen må fornyes».** Innloggingen mangler eller er utløpt. Kjør `npm run login:browser` på nytt, eller `npm run login` hvis du bruker den fornybare innloggingen.
+- **«Vigilos appoppsett mangler» eller «er ufullstendig».** `npm run login` trenger en komplett `.data/mobile-client.json`. Bruk `npm run login:browser` i stedet.
+- **«Innloggingen tok mer enn ti minutter».** Innloggingen må fullføres innen ti minutter. Velg tilhørighet og åpne **Foreldreportal** hvis du blir bedt om det. Vinduet lukkes når portalen har lastet.
+- **«Playwright mangler».** Kjør `npm install` i prosjektmappen.
+- **Klienten får ikke startet serveren.** Bruk hele stien til både `node` (fra `command -v node`) og `src/server.js`.
+- **«Ugyldige argumenter til Vigilo-verktøyet».** En ID eller dato har feil format. Bruk ID-er fra `list_children` og datoer som `ÅÅÅÅ-MM-DD`.
+- **«Vigilo-svaret er for stort».** Bruk en kortere datoperiode. Vedlegg over 10 MB avvises.
+- **«Vigilo-kallet kunne ikke fullføres».** Andre feil vises ikke i detalj. Sjekk nettverket og ID-ene, og prøv igjen.
 
 ## Sikkerhet og personvern
 
-Serveren kjører lokalt via stdio og åpner ingen lyttende nettverksport. En tilkoblet KI-klient kan hente Vigilo-informasjonen du ber om. Innhold brukt med en skybasert KI-tjeneste kan bli sendt dit. Behandle meldinger og oppslag som ikke-betrodd innhold, se gjennom verktøykall og bruk en klient du stoler på.
-
-Økter, nettleserprofiler, nedlastinger og OAuth-oppsett hører hjemme i `.data/` og må holdes private. Tillatelseslisten i `.gitignore` holder lokale data og maskinspesifikke filer unna en bred `git add .`.
+- Serveren kjører på din datamaskin og åpner ingen nettverksport. En KI-klient du kobler til, kan likevel lese det verktøyene gir, og en KI-tjeneste i skyen får det klienten leser. Vurder selv hva du vil dele.
+- Bare utvalgte felt fra Vigilo sendes videre, merket som data og ikke instruksjoner. Det kan ikke stoppe alle forsøk på å styre KI-en gjennom en melding. Bruk klienter du stoler på, og se over verktøykallene.
+- Feilmeldinger gjentar ikke Vigilos svar eller innholdet i lokale filer.
+- `.data/` inneholder innloggingen og nettleserprofilene dine, og kan bare leses av brukeren din. Del den aldri. Vedlegg ligger der til du sletter dem, og stiene klienten får, kan inneholde brukernavnet ditt.
+- Se [SECURITY.md](SECURITY.md) for å melde fra om sikkerhetshull.
 
 ## Endringslogg
 
-### 0.2.0 (2026-11-09)
-- Fornybar innlogging virker på Linux, for eksempel på en Raspberry Pi. Låsen rundt økten bruker `flock` på Linux; macOS bruker fortsatt `lockf`. Før dette feilet Vigilo-kall på Linux så snart det første tokenet gikk ut.
-
-### 0.1.0 (2026-10-07)
-- Første offentlige versjon: `list_children`, `list_message_threads`, `get_message_thread`, `list_news` og `get_message_attachment`.
-- Lagt til samme dag: `get_after_school_status` (inn- og utkryssing på AKS) og `get_schedule` (timeplan).
+Se [CHANGELOG.no.md](CHANGELOG.no.md) og [Releases](https://github.com/kristoffervp/vigilo-mcp/releases).
 
 ## Lisens
 
-Kode og dokumentasjon har [0BSD-lisens](LICENSE). Den gjelder ikke Vigilo-tjenesten eller informasjonen som hentes fra den.
+[0BSD](LICENSE): bruk, endre og del fritt, også kommersielt, uten krav om kreditering. Lisensen gjelder ikke Vigilo-tjenesten eller innholdet der.
