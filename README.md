@@ -62,7 +62,7 @@ Threads and news cover the last 90 days up to tomorrow, unless you set `from_dat
 
 The server renews the browser sign-in in headless Chrome for as long as Vigilo's web session allows. After that, run `npm run login:browser` again.
 
-`npm run login` makes a sign-in that renews itself with a refresh token, like the Vigilo app. It needs a private `.data/mobile-client.json` with the app's OAuth settings (`clientId`, `clientSecret`, `redirectUri`, `authority`), which is not included. Never publish this file or use someone else's.
+`npm run login` makes a sign-in that renews itself with a refresh token, like the Vigilo app. It needs a private `.data/mobile-client.json` with the app's OAuth settings (`clientId`, `clientSecret`, `redirectUri`, `authority`), which is not included. Never publish this file or use someone else's. The sign-in opens Chrome with a temporary profile that is deleted afterwards.
 
 - When `.data/mobile-session.json` exists, the server uses it instead of the browser sign-in.
 - A file lock stops two processes from renewing at the same time (`lockf` on macOS, `flock` on Linux).
@@ -80,7 +80,7 @@ flowchart LR
     tools["Tools<br/>portal.js"]
     signin["Sign-in in use and renewal<br/>session.js, mobile-auth.js"]
     login["npm run login:browser, npm run login<br/>Chrome via Playwright<br/>login.js, login-mobile.js, oauth.js"]
-    data[(".data/<br/>sign-in, browser profiles,<br/>app settings, downloads")]
+    data[(".data/<br/>sign-in, browser profile,<br/>app settings, downloads")]
   end
   idporten["ID-porten"]
   auth["Vigilo sign-in<br/>auth.prod.vigilo-oas.no"]
@@ -103,7 +103,7 @@ Set these in the client config (and in Terminal for the login commands):
 
 | Variable | Default | Purpose |
 | --- | --- | --- |
-| `VIGILO_DATA_DIR` | `.data` in this folder | Sign-in, browser profiles, app settings and downloads |
+| `VIGILO_DATA_DIR` | `.data` in this folder | Sign-in, the browser profile, app settings and downloads |
 | `VIGILO_BROWSER_CHANNEL` | `chrome` | Browser for signing in and for renewing the browser sign-in |
 | `VIGILO_AUTH_DEBUG` | off | `1` makes `npm run login` print the hosts the sign-in passes through |
 
@@ -123,7 +123,7 @@ Set these in the client config (and in Terminal for the login commands):
 - The server runs on your computer and opens no network port. Any AI client you connect can still read what the tools return, and a cloud AI service receives what the client reads. Decide what you are willing to share.
 - Only selected fields from Vigilo are passed on, marked as data and not instructions. That can't stop every attempt to steer the AI through a message. Use clients you trust and review tool calls.
 - Error messages don't repeat Vigilo's responses or the content of local files.
-- `.data/` holds your sign-in and browser profiles, readable only by your user. Never share it. Attachments stay there until you delete them, and the paths returned to the client can include your user name.
+- `.data/` holds your sign-in, readable only by your user. With the browser sign-in it also holds the Chrome profile the server uses to renew it. Never share it. Attachments stay there until you delete them, and the paths returned to the client can include your user name.
 - To report a vulnerability, see [SECURITY.md](SECURITY.md).
 
 ## Changelog

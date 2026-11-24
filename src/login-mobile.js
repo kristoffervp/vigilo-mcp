@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises';
+import { readFile, rm } from 'node:fs/promises';
 import { browserChannel, ensurePrivateDataDir, loadPlaywright, mobileProfilePath, sessionPath } from './browser.js';
 import { exchangeMobileCode, mobileConfig } from './mobile-auth.js';
 import { captureMobileRedirect, mobileCallbackCode, newOauthAttempt } from './oauth.js';
@@ -12,10 +12,9 @@ async function loginMobile() {
   const debug = process.env.VIGILO_AUTH_DEBUG === '1';
 
   const { chromium } = loadPlaywright();
-  const context = await chromium.launchPersistentContext(mobileProfilePath, {
-    channel: browserChannel, headless: false, acceptDownloads: false,
-    chromiumSandbox: true, viewport: { width: 1280, height: 960 },
-  });
+  // En ny, tom nettleserprofil i minnet for hver innlogging, så ingen innlogging blir liggende i .data/ etterpå.
+  const browser = await chromium.launch({ channel: browserChannel, headless: false, chromiumSandbox: true });
+  const context = await browser.newContext({ acceptDownloads: false, viewport: { width: 1280, height: 960 } });
   let timer;
   try {
     const existingCookies = await context.cookies('https://auth.prod.vigilo-oas.no');
@@ -89,9 +88,11 @@ async function loginMobile() {
       }
     }
     console.log('Vigilo-økten med automatisk fornyelse er lagret lokalt.');
+    // Versjoner før 0.2.1 beholdt nettleserprofilen i .data/mobile-browser-profile/.
+    await rm(mobileProfilePath, { recursive: true, force: true });
   } finally {
     clearTimeout(timer);
-    await context.close();
+    await browser.close().catch(() => {});
   }
 }
 

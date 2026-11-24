@@ -2,6 +2,11 @@
 
 [English](CHANGELOG.md)
 
+## 0.2.1 (2026-11-25)
+
+- Feilmeldinger om innlogging nevner riktig kommando: `npm run login:browser` for nettleserinnloggingen, `npm run login` for den fornybare. Før sa de alltid `npm run login`.
+- `npm run login` åpner Chrome med en midlertidig profil og beholder ikke lenger en i `.data/`. En gammel `.data/mobile-browser-profile/` slettes etter neste vellykkede innlogging.
+
 ## 0.2.0 (2026-11-09)
 
 - Den fornybare innloggingen virker på Linux, for eksempel på en Raspberry Pi. Låsen rundt økten bruker `flock` på Linux og `lockf` på macOS. Før dette feilet kall til Vigilo på Linux så snart det første tokenet gikk ut.

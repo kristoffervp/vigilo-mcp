@@ -62,7 +62,7 @@ Tråder og oppslag gjelder de siste 90 dagene fram til i morgen, med mindre du s
 
 Serveren fornyer nettleserinnloggingen i Chrome uten vindu så lenge Vigilos nettøkt tillater det. Etter det kjører du `npm run login:browser` på nytt.
 
-`npm run login` lager en innlogging som fornyer seg selv med et fornyelsestoken, slik Vigilo-appen gjør. Den trenger en privat `.data/mobile-client.json` med appens OAuth-oppsett (`clientId`, `clientSecret`, `redirectUri`, `authority`), som ikke følger med. Publiser aldri denne filen, og bruk aldri andres.
+`npm run login` lager en innlogging som fornyer seg selv med et fornyelsestoken, slik Vigilo-appen gjør. Den trenger en privat `.data/mobile-client.json` med appens OAuth-oppsett (`clientId`, `clientSecret`, `redirectUri`, `authority`), som ikke følger med. Publiser aldri denne filen, og bruk aldri andres. Innloggingen åpner Chrome med en midlertidig profil som slettes etterpå.
 
 - Når `.data/mobile-session.json` finnes, bruker serveren den i stedet for nettleserinnloggingen.
 - En fillås hindrer at to prosesser fornyer samtidig (`lockf` på macOS, `flock` på Linux).
@@ -80,7 +80,7 @@ flowchart LR
     tools["Verktøy<br/>portal.js"]
     signin["Innlogging i bruk og fornyelse<br/>session.js, mobile-auth.js"]
     login["npm run login:browser, npm run login<br/>Chrome via Playwright<br/>login.js, login-mobile.js, oauth.js"]
-    data[(".data/<br/>innlogging, nettleserprofiler,<br/>appoppsett, nedlastinger")]
+    data[(".data/<br/>innlogging, nettleserprofil,<br/>appoppsett, nedlastinger")]
   end
   idporten["ID-porten"]
   auth["Vigilo-innlogging<br/>auth.prod.vigilo-oas.no"]
@@ -103,7 +103,7 @@ Settes i klientoppsettet (og i Terminal for innloggingskommandoene):
 
 | Variabel | Standard | Brukes til |
 | --- | --- | --- |
-| `VIGILO_DATA_DIR` | `.data` i denne mappen | Innlogging, nettleserprofiler, appoppsett og nedlastinger |
+| `VIGILO_DATA_DIR` | `.data` i denne mappen | Innlogging, nettleserprofilen, appoppsett og nedlastinger |
 | `VIGILO_BROWSER_CHANNEL` | `chrome` | Nettleser for innlogging og for fornyelse av nettleserinnloggingen |
 | `VIGILO_AUTH_DEBUG` | av | `1` får `npm run login` til å skrive ut vertene innloggingen går gjennom |
 
@@ -123,7 +123,7 @@ Settes i klientoppsettet (og i Terminal for innloggingskommandoene):
 - Serveren kjører på din datamaskin og åpner ingen nettverksport. En KI-klient du kobler til, kan likevel lese det verktøyene gir, og en KI-tjeneste i skyen får det klienten leser. Vurder selv hva du vil dele.
 - Bare utvalgte felt fra Vigilo sendes videre, merket som data og ikke instruksjoner. Det kan ikke stoppe alle forsøk på å styre KI-en gjennom en melding. Bruk klienter du stoler på, og se over verktøykallene.
 - Feilmeldinger gjentar ikke Vigilos svar eller innholdet i lokale filer.
-- `.data/` inneholder innloggingen og nettleserprofilene dine, og kan bare leses av brukeren din. Del den aldri. Vedlegg ligger der til du sletter dem, og stiene klienten får, kan inneholde brukernavnet ditt.
+- `.data/` inneholder innloggingen din, og kan bare leses av brukeren din. Med nettleserinnloggingen ligger også Chrome-profilen serveren bruker til å fornye den, der. Del den aldri. Vedlegg ligger der til du sletter dem, og stiene klienten får, kan inneholde brukernavnet ditt.
 - Se [SECURITY.md](SECURITY.md) for å melde fra om sikkerhetshull.
 
 ## Endringslogg

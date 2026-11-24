@@ -13,11 +13,11 @@ export function toolResult(value) {
 
 export function publicFailure(cause) {
   const message = typeof cause?.message === 'string' ? cause.message : '';
-  if (message.includes('npm run login:renewable')) {
-    return 'Vigilo-innloggingen må fornyes. Kjør npm run login:renewable på nytt.';
-  }
-  if (message.includes('npm run login') || message.includes('innlogging')) {
-    return 'Vigilo-innloggingen må fornyes. Kjør npm run login på nytt.';
+  // Behold kommandoen feilen nevner: nettleserinnloggingen og den fornybare innloggingen fornyes på hver sin måte.
+  const login = message.match(/npm run login(:browser|:renewable)?\b/);
+  if (login) return `Vigilo-innloggingen må fornyes. Kjør ${login[0]} på nytt.`;
+  if (message.includes('innlogging')) {
+    return 'Vigilo-innloggingen må fornyes. Kjør npm run login:browser på nytt, eller npm run login hvis du bruker fornybar innlogging.';
   }
   if (/^(Ugyldig |from_date |to_date |date |Datoperioden |include_after_school |school_unit_id )/.test(message)) {
     return 'Ugyldige argumenter til Vigilo-verktøyet.';
