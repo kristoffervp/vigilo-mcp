@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/banner.jpg" alt="Vigilo MCP: a phone with a message connects to an after-school check-in status" width="100%"></p>
+
 <h1 align="center">Vigilo MCP</h1>
 
 <p align="center">

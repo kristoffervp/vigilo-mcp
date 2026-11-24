@@ -1,3 +1,5 @@
+<p align="center"><img src="assets/banner.jpg" alt="Vigilo MCP: en telefon med en melding kobles til en innsjekkingsstatus for AKS" width="100%"></p>
+
 <h1 align="center">Vigilo MCP</h1>
 
 <p align="center">
