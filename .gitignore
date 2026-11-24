@@ -1,9 +1,18 @@
 # Explicit public-file allowlist. Private sessions and local files stay out of Git.
 /*
 !/.gitignore
+!/.github/
+/.github/*
+!/.github/workflows/
 !/LICENSE
+!/assets/
+/assets/*
+!/assets/banner.jpg
 !/README.md
 !/README.no.md
+!/CHANGELOG.md
+!/CHANGELOG.no.md
+!/SECURITY.md
 !/package.json
 !/package-lock.json
 !/src/

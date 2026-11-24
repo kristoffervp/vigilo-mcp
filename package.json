@@ -4,7 +4,7 @@
   "license": "0BSD",
   "private": true,
   "type": "module",
-  "description": "Lokal, lesende Vigilo MCP med innlogging via Chrome og ID-porten",
+  "description": "Unofficial local MCP server for Vigilo's parent portal",
   "scripts": {
     "login": "node src/login-mobile.js",
     "login:browser": "node src/login.js",
