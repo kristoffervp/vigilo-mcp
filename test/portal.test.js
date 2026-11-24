@@ -143,6 +143,14 @@ test('large JSON replies are rejected before parsing', async () => {
   await assert.rejects(streamed.listChildren(), /for stort/);
 });
 
+test('an expired browser session names npm run login:browser', async () => {
+  const portal = new Portal({
+    sessionProvider: async () => ({ accessToken: 'test' }),
+    fetcher: async () => new Response('', { status: 401 }),
+  });
+  await assert.rejects(portal.listChildren(), /Kjør npm run login:browser på nytt/);
+});
+
 test('attachments are saved privately and only their path is returned', async () => {
   const directory = await mkdtemp(join(tmpdir(), 'vigilo-mcp-download-'));
   try {

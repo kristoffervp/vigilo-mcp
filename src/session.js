@@ -6,12 +6,12 @@ let renewal;
 
 async function loadSavedSession() {
   try { return JSON.parse(await readFile(sessionPath, 'utf8')); }
-  catch { throw new Error('Ingen lokal Vigilo-økt. Kjør npm run login først.'); }
+  catch { throw new Error('Ingen lokal Vigilo-økt. Kjør npm run login:browser først.'); }
 }
 
 async function renewWithBrowser(previous) {
   if (!previous.browserStorage || Object.keys(previous.browserStorage).length === 0) {
-    throw new Error('Vigilo-økten kan ikke fornyes automatisk. Kjør npm run login på nytt.');
+    throw new Error('Vigilo-økten kan ikke fornyes automatisk. Kjør npm run login:browser på nytt.');
   }
   const { chromium } = loadPlaywright();
   const context = await chromium.launchPersistentContext(profilePath, {
@@ -51,7 +51,7 @@ async function renewWithBrowser(previous) {
     const page = context.pages()[0] || await context.newPage();
     page.goto(`${portalOrigin}/`, { timeout: 0 }).catch(() => {});
     const timeout = new Promise((_, reject) => {
-      timeoutId = setTimeout(() => reject(new Error('Vigilo-økten må fornyes i Chrome. Kjør npm run login på nytt.')), 60_000);
+      timeoutId = setTimeout(() => reject(new Error('Vigilo-økten må fornyes i Chrome. Kjør npm run login:browser på nytt.')), 60_000);
     });
     const current = await Promise.race([found, timeout]);
     current.authCookies = (await context.cookies()).filter((cookie) =>

@@ -41,7 +41,7 @@ async function login() {
     page.goto(`${portalOrigin}/login?redirect=%2F`, { timeout: 0 }).catch(() => {});
     let timeoutId;
     const timer = new Promise((_, reject) => {
-      timeoutId = setTimeout(() => reject(new Error('Innloggingen tok mer enn ti minutter. Kjør npm run login på nytt.')), 600_000);
+      timeoutId = setTimeout(() => reject(new Error('Innloggingen tok mer enn ti minutter. Kjør npm run login:browser på nytt.')), 600_000);
     });
     const session = await Promise.race([loggedIn, timer]);
     clearTimeout(timeoutId);

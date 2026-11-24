@@ -20,3 +20,12 @@ test('raw parser errors cannot echo private file contents', () => {
   assert.equal(publicFailure(new Error('Kjør npm run login:renewable på nytt.')),
     'Vigilo-innloggingen må fornyes. Kjør npm run login:renewable på nytt.');
 });
+
+test('sign-in errors keep the command for the sign-in in use', () => {
+  assert.equal(publicFailure(new Error('Vigilo-økten må fornyes i Chrome. Kjør npm run login:browser på nytt.')),
+    'Vigilo-innloggingen må fornyes. Kjør npm run login:browser på nytt.');
+  assert.equal(publicFailure(new Error('Vigilo-innloggingen må fornyes. Kjør npm run login på nytt.')),
+    'Vigilo-innloggingen må fornyes. Kjør npm run login på nytt.');
+  assert.equal(publicFailure(new Error('Vigilo-innloggingen kunne ikke fullføres.')),
+    'Vigilo-innloggingen må fornyes. Kjør npm run login:browser på nytt, eller npm run login hvis du bruker fornybar innlogging.');
+});

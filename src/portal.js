@@ -203,7 +203,8 @@ export class Portal {
       session = await refreshMobileSessionNow(session);
       response = await send();
     }
-    if (response.status === 401) throw new Error('Vigilo-økten er utløpt. Kjør npm run login på nytt.');
+    // En fornybar innlogging har refreshToken; ellers er det nettleserinnloggingen.
+    if (response.status === 401) throw new Error(`Vigilo-økten er utløpt. Kjør ${session.refreshToken ? 'npm run login' : 'npm run login:browser'} på nytt.`);
     if (!response.ok) throw new Error(`Vigilo svarte med HTTP ${response.status}.`);
     if (binary) return response;
     return limitedJson(response);
