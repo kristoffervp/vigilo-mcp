@@ -46,7 +46,7 @@ npm run login:browser
 | `list_message_threads` | Meldingstråder for ett barn, med AKS/SFO med mindre `include_after_school` er `false`. Filtre: `from_date`, `to_date` |
 | `get_message_thread` | Én tråd med meldingene, uten å endre lesestatus |
 | `list_news` | Oppslag for ett barn. Filtre: `from_date`, `to_date` |
-| `get_after_school_status` | Siste registrerte inn- eller utsjekk på SFO/AKS for ett barn på en `date` |
+| `get_after_school_status` | Inn- og utsjekk på SFO/AKS for ett barn på en `date`, med klokkeslett |
 | `get_schedule` | Skoletimer og kalenderhendelser for uken som inneholder `date` |
 | `get_message_attachment` | Lagrer et meldingsvedlegg i `.data/downloads/` og gir stien |
 
@@ -54,7 +54,9 @@ Begynn med `list_children`. De andre verktøyene tar barnets `id` som `child_id`
 
 Tråder og oppslag gjelder de siste 90 dagene fram til i morgen, med mindre du setter `from_date` og `to_date` (`ÅÅÅÅ-MM-DD`, høyst 366 dager mellom). `date` er dagens dato i Norge hvis den ikke er satt. Lister gir høyst 50 elementer, med `total` og `truncated`, og en tråd viser de siste 50 meldingene. Tekst over 20 000 tegn kuttes og merkes `textTruncated`. Svarene kommer som `structuredContent` og som JSON-tekst.
 
-`get_after_school_status` gir `checked_in`, `checked_out` eller `unknown`, med tidspunktet for siste registrering. Den viser det personalet har registrert i Vigilo, og det kan avvike fra hvor barnet er.
+`get_after_school_status` gir `checked_in`, `checked_out` eller `unknown`, med tidspunktet for siste registrering. `periods` viser hver innsjekk med utsjekken som hører til, som UTC-`time` og norsk `localTime` (`HH:MM`). En dag kan ha flere perioder, for eksempel morgen-AKS før skolen og AKS etter skolen. En periode som ikke er avsluttet, har `checkOut: null`. Den viser det personalet har registrert i Vigilo, og det kan avvike fra hvor barnet er.
+
+Vigilo sier også hvem som registrerte inn- eller utsjekken (ansatt eller forelder). Serveren tar ikke med navnet. Trenger du det, kan det legges til et valg for det.
 
 `get_message_attachment` tar filer opptil 10 MB og gir bare sti, type og størrelse, så klienten må kunne lese lokale filer for å åpne den. Andre typer enn PDF, JPEG, PNG, ren tekst og Word (`.docx`) lagres med `.bin`.
 

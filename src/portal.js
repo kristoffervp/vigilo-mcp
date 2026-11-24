@@ -114,6 +114,27 @@ function osloToday() {
   }).format(new Date());
 }
 
+const osloClock = new Intl.DateTimeFormat('en-GB', {
+  timeZone: 'Europe/Oslo', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+});
+
+function registration(event) {
+  return { time: event.time, localTime: osloClock.format(new Date(event.time)) };
+}
+
+// Pairs each check-in with the next check-out. A child can go to AKS before school
+// and again after, so one day can have several periods.
+function afterSchoolPeriods(events) {
+  const periods = [];
+  for (const event of events) {
+    const open = periods.at(-1);
+    if (event.type === 'checkIn') periods.push({ checkIn: registration(event), checkOut: null });
+    else if (open?.checkIn && !open.checkOut) open.checkOut = registration(event);
+    else periods.push({ checkIn: null, checkOut: registration(event) });
+  }
+  return periods.slice(0, maxItems);
+}
+
 function isoWeekForDate(value) {
   const monday = new Date(`${value}T00:00:00Z`);
   monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7));
@@ -262,6 +283,7 @@ export class Portal {
       status: last ? (last.type === 'checkIn' ? 'checked_in' : 'checked_out') : 'unknown',
       lastRegistrationAt: last?.time || null,
       registeredEvents: events.length,
+      periods: afterSchoolPeriods(events),
     };
   }
 

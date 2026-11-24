@@ -2,6 +2,10 @@
 
 [English](CHANGELOG.md)
 
+## 0.3.0 (2026-11-25)
+
+- `get_after_school_status` gir `periods`: hver innsjekk med utsjekken som hører til, i UTC og norsk tid. Før ga den bare siste registrering, så innsjekktiden forsvant når barnet var sjekket ut. Hvem som registrerte, er fortsatt utelatt.
+
 ## 0.2.1 (2026-11-25)
 
 - Feilmeldinger om innlogging nevner riktig kommando: `npm run login:browser` for nettleserinnloggingen, `npm run login` for den fornybare. Før sa de alltid `npm run login`.
