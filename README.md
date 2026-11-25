@@ -10,7 +10,7 @@
 
 <p align="center">English · <a href="README.no.md">Norsk</a></p>
 
-A local MCP server that lets an AI client read Vigilo's parent portal: messages, news, the school schedule, after-school check-ins and message attachments. By default it only reads. Replying, absence reports, check-out notes and meeting bookings are opt-in (see [Sending](#sending-opt-in)).
+A local MCP server that lets an AI client read Vigilo's parent portal: messages, news, the school schedule, after-school check-ins and message attachments. By default it only reads. Replying, absence reports, check-out notes, meeting bookings and sign-ups are opt-in (see [Sending](#sending-opt-in)).
 
 **Unofficial.** Not made by or affiliated with Vigilo AS, the school or the municipality. It uses undocumented endpoints that can change without notice.
 
@@ -50,11 +50,14 @@ npm run login:browser
 | `get_schedule` | Lessons and calendar events for the week that contains `date` |
 | `get_message_attachment` | Saves a message attachment in `.data/downloads/` and returns the path |
 | `list_contacts` | Staff you can write to about a child at a unit, with contact teachers |
-| `list_absences` | Registered absences at school and AKS/SFO, with whether they can be deleted |
+| `list_absences` | Registered absences at school and AKS/SFO, with whether they can be edited or deleted |
 | `list_absence_codes` | The absence codes a unit uses |
 | `list_checkout_notes` | AKS/SFO check-out notes ("hentemeldinger"): who picks up, when, or that the child walks home. Default four weeks from today |
 | `list_checkout_note_types` | The kinds of check-out note the AKS/SFO offers |
 | `list_meeting_invitations` | Meeting invitations, such as a parent-teacher meeting, with free times |
+| `list_registrations` | Sign-ups ("påmeldinger") with their choices, deadline and your answer |
+| `list_required_actions` | What Vigilo asks parents to do (such as health information), and unread counts per child |
+| `list_consent_forms` | Consent forms at a unit, with each guardian's status: `pending`, `given` or `revoked`. Give or revoke consent in Vigilo |
 
 Start with `list_children`. The other tools take a child's `id` as `child_id`, and `get_schedule` can take a school unit's `id` as `school_unit_id`. Without it, the child's first school unit is used.
 
@@ -72,23 +75,26 @@ Set `VIGILO_ALLOW_SEND=1` (in `"env"` in the client config) to add these tools. 
 
 | Tool | What it does |
 | --- | --- |
-| `prepare_reply` | A reply in a message thread |
-| `prepare_message` | A new message to staff from `list_contacts` (at most 10) |
-| `prepare_absence` | An absence report from today or later: to the contact teachers at school, or to AKS/SFO |
+| `prepare_reply` | A reply in a message thread, optionally with attachments |
+| `prepare_message` | A new message to staff from `list_contacts` (at most 10), optionally with attachments |
+| `prepare_absence` | An absence report from today or later: to the contact teachers at school (a note is required, attachments optional), or to AKS/SFO |
+| `prepare_edit_absence` | New dates for a school absence Vigilo marks as editable |
 | `prepare_delete_absence` | Deletes an absence Vigilo marks as deletable |
-| `prepare_checkout_note` | A check-out note: a type from `list_checkout_note_types`, a time (quarter hours, at the latest 18:00), weekdays, and optionally weekly |
+| `prepare_checkout_note` | A check-out note: a type from `list_checkout_note_types`, a time (quarter hours, at the latest 18:00), weekdays, and optionally weekly. A note (at most 200 characters) is required for types that use one, and not allowed for the others |
+| `prepare_edit_checkout_note` | Changes or shortens a check-out note, with the same rules. Every-other-week notes stay every other week. Once a weekly note has started, only `to_date` can change |
 | `prepare_delete_checkout_note` | Deletes a check-out note |
 | `prepare_book_meeting` | Books a free time in a meeting invitation |
+| `prepare_registration_reply` | Answers a sign-up: one choice, one or more, or all in ranked order, before the deadline |
 | `send_prepared` | Sends what a prepare tool prepared |
-| `mark_thread_read` | Marks a thread as read, in one step |
+| `mark_thread_read`, `mark_news_read` | Marks a thread or a news post as read, in one step |
 
-Every send takes two steps. A prepare tool checks the request against your account and returns exactly what will be sent, a one-line `summary` and a one-time code. Nothing has been sent at that point. `send_prepared` needs the code and the same `summary`, so your client's approval prompt shows what is sent. It sends once, and the code expires after 10 minutes or when the server stops. If your client supports confirmation dialogs (MCP elicitation), the server also asks you there before `send_prepared` or `mark_thread_read` does anything. Sent, failed and uncertain attempts are logged in `.data/sent.jsonl`.
+Every send takes two steps. A prepare tool checks the request against your account and returns exactly what will be sent, a one-line `summary` and a one-time code. Nothing has been sent at that point. An edit shows before and after. `send_prepared` needs the code and the same `summary`, so your client's approval prompt shows what is sent. It sends once, and the code expires after 10 minutes or when the server stops. An edit is not sent if the note or absence changed after the preview, nor a check-out note or sign-up answer once its deadline has passed. In the dialog every fact comes first, one line each, and the free text comes last; only the free text is shortened. If your client supports confirmation dialogs (MCP elicitation), the server also asks you there before `send_prepared` or a mark tool does anything. Sent, failed and uncertain attempts are logged in `.data/sent.jsonl`.
 
-- Never choose "Always allow" for `send_prepared` or `mark_thread_read` in your client.
+- Never choose "Always allow" for `send_prepared`, `mark_thread_read` or `mark_news_read` in your client.
 - A check-out note decides how your child leaves AKS. Read the preview carefully.
 - If Vigilo doesn't answer clearly after a send, it may still have arrived. Check in Vigilo before you try again.
-- Parents can't delete sent messages in Vigilo, and a thread can't be marked unread again.
-- Text only. Attachments are not supported.
+- Parents can't delete sent messages in Vigilo, and a thread or post can't be marked unread again.
+- Attachments are off unless `VIGILO_ATTACHMENTS_DIR` names a folder. The tools take names of files directly in it, nothing else: no subfolders, symlinks out of it, hard links or names with line breaks. PDF, PNG or JPEG (checked by content), at most 5 files of 5 MB each and 10 MB in all. Files are read when prepared, and the preview shows each name, size and a short sha256. Use a folder only you write to (not Downloads or a synced folder), and put only files you mean to send there.
 - A message can contain text meant to make the AI client send something. Read the preview, and leave sending off when you don't need it. Don't give these tools to an automated client that reads messages on its own.
 
 ## Renewable sign-in (optional)
@@ -116,6 +122,7 @@ flowchart LR
     signin["Sign-in in use and renewal<br/>session.js, mobile-auth.js"]
     login["npm run login:browser, npm run login<br/>Chrome via Playwright<br/>login.js, login-mobile.js, oauth.js"]
     data[(".data/<br/>sign-in, browser profile,<br/>app settings, downloads, sent.jsonl")]
+    files[("Attachments folder<br/>VIGILO_ATTACHMENTS_DIR")]
   end
   idporten["ID-porten"]
   auth["Vigilo sign-in<br/>auth.prod.vigilo-oas.no"]
@@ -135,6 +142,8 @@ flowchart LR
   login -->|"saves"| data
   tools -.->|"saves attachments"| data
   send -.->|"logs what is sent"| data
+  you -.->|"puts files to send"| files
+  send -.->|"reads attachments,<br/>only from here"| files
 ```
 
 ## Configuration
@@ -144,6 +153,7 @@ Set these in the client config (and in Terminal for the login commands):
 | Variable | Default | Purpose |
 | --- | --- | --- |
 | `VIGILO_DATA_DIR` | `.data` in this folder | Sign-in, the browser profile, app settings and downloads |
+| `VIGILO_ATTACHMENTS_DIR` | off | Folder the send tools may take attachments from |
 | `VIGILO_BROWSER_CHANNEL` | `chrome` | Browser for signing in and for renewing the browser sign-in |
 | `VIGILO_AUTH_DEBUG` | off | `1` makes `npm run login` print the hosts the sign-in passes through |
 
@@ -164,7 +174,7 @@ Set these in the client config (and in Terminal for the login commands):
 - The server runs on your computer and opens no network port. Any AI client you connect can still read what the tools return, and a cloud AI service receives what the client reads. Decide what you are willing to share.
 - Only selected fields from Vigilo are passed on, marked as data and not instructions. That can't stop every attempt to steer the AI through a message. Use clients you trust and review tool calls.
 - Error messages don't repeat Vigilo's responses or the content of local files. A refused send shows only Vigilo's error code.
-- Nothing is sent to Vigilo unless `VIGILO_ALLOW_SEND=1` is set. The server can't tell whether you or the AI approved a send: it asks you in a dialog when the client supports it, and otherwise your client's tool approval is the only check. `mark_thread_read` is one step.
+- Nothing is sent to Vigilo unless `VIGILO_ALLOW_SEND=1` is set. The server can't tell whether you or the AI approved a send: it asks you in a dialog when the client supports it, and otherwise your client's tool approval is the only check. The mark tools are one step. Attachments come only from `VIGILO_ATTACHMENTS_DIR`. That keeps the AI from sending other files from your computer only as long as it cannot write to that folder itself.
 - `.data/` holds your sign-in, readable only by your user. With the browser sign-in it also holds the Chrome profile the server uses to renew it. Never share it. Attachments stay there until you delete them, and the paths returned to the client can include your user name.
 - To report a vulnerability, see [SECURITY.md](SECURITY.md).
 

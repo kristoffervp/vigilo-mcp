@@ -75,7 +75,7 @@ function threadDetail(value) {
 
 function newsItem(value) {
   const result = pick(value, [
-    'id', 'newsFeedItemId', 'postId', 'title', 'heading',
+    'id', 'newsFeedItemId', 'postId', 'type', 'isRead', 'title', 'heading',
     'createdAt', 'publishedAt', 'updatedAt',
   ]);
   setText(result, value?.text ?? value?.body ?? value?.content ?? value?.description);

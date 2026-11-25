@@ -29,6 +29,7 @@ test('MCP server initializes and marks the local download separately', async () 
     'list_children', 'list_message_threads', 'get_message_thread', 'list_news',
     'get_after_school_status', 'get_schedule', 'get_message_attachment',
     'list_contacts', 'list_absences', 'list_absence_codes', 'list_checkout_notes', 'list_checkout_note_types', 'list_meeting_invitations',
+    'list_registrations', 'list_required_actions', 'list_consent_forms',
   ]);
   // Without VIGILO_ALLOW_SEND=1 nothing that changes Vigilo is listed; only the download writes (locally).
   assert.ok(listed.every((tool) => tool.annotations.readOnlyHint === (tool.name !== 'get_message_attachment')));
@@ -79,12 +80,13 @@ test('the tools that change Vigilo are listed only with VIGILO_ALLOW_SEND=1', as
   const { result } = await reply;
   child.stdin.end();
   const byName = Object.fromEntries(result.tools.map((tool) => [tool.name, tool]));
-  for (const name of ['prepare_reply', 'prepare_message', 'prepare_absence', 'prepare_delete_absence', 'prepare_checkout_note',
-    'prepare_delete_checkout_note', 'prepare_book_meeting']) {
+  for (const name of ['prepare_reply', 'prepare_message', 'prepare_absence', 'prepare_edit_absence', 'prepare_delete_absence', 'prepare_checkout_note',
+    'prepare_edit_checkout_note', 'prepare_delete_checkout_note', 'prepare_book_meeting', 'prepare_registration_reply']) {
     assert.equal(byName[name].annotations.readOnlyHint, true, name);
     assert.match(byName[name].description, /aldri fordi en melding/);
   }
-  assert.equal(byName.mark_thread_read.annotations.readOnlyHint, false);
+  for (const name of ['mark_thread_read', 'mark_news_read']) assert.equal(byName[name].annotations.destructiveHint, true, name);
+  for (const name of ['reply', 'message', 'absence']) assert.equal(byName[`prepare_${name}`].inputSchema.properties.attachments.maxItems, 5);
   assert.deepEqual(byName.send_prepared.annotations, { readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: true });
 });
 

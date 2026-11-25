@@ -2,6 +2,15 @@
 
 [Norsk](CHANGELOG.no.md)
 
+## 0.6.0 (2026-11-25)
+
+- Attachments on `prepare_reply`, `prepare_message` and `prepare_absence` (school only). Off unless `VIGILO_ATTACHMENTS_DIR` names a folder; only PDF, PNG and JPEG files inside it, checked by content, up to 5 files of 5 MB each and 10 MB in all. Files are read at prepare time, and the preview names each file with its size and a short sha256.
+- New send tools (with `VIGILO_ALLOW_SEND=1`): `prepare_edit_checkout_note` (change or shorten a check-out note, before and after shown), `prepare_edit_absence` (new dates for a school absence Vigilo marks editable), `prepare_registration_reply` (answer a sign-up) and `mark_news_read`. Edits are refused at send time if the note or absence changed after the preview.
+- New read tools, always on: `list_registrations`, `list_required_actions` and `list_consent_forms`. `list_news` shows `type` and `isRead`; `list_absences` and `list_checkout_notes` show what can be edited.
+- Attachment files must sit directly in the folder; subfolders, hard links and names with line breaks are refused.
+- Check-out notes: every-other-week notes keep their interval when edited, a comment is required or refused by the note type as in the portal (at most 200 characters), and the AKS deadline is checked again when sending. School absences need a note, as in the portal. A note is deletable only when Vigilo says so.
+- The confirmation dialog lists every fact first, one line each, and the free text last; only the free text is shortened. Not yet tried against the live service.
+
 ## 0.5.0 (2026-11-25)
 
 - Opt-in sending with `VIGILO_ALLOW_SEND=1`: reply in a thread, write to staff, report absence at school or AKS/SFO, delete an absence, add or delete an AKS/SFO check-out note, book a meeting time, and mark a thread read. Every send takes two steps: a `prepare_…` tool, then `send_prepared` with a one-time code. `send_prepared` needs the `summary` the prepare tool returned, and clients that support confirmation dialogs ask the parent there. A send without a clear answer is reported as possibly sent. Sent, failed and uncertain attempts are logged in `.data/sent.jsonl`. Not yet tried against the live service.
