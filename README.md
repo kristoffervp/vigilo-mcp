@@ -67,12 +67,12 @@ The server renews the browser sign-in in headless Chrome for as long as Vigilo's
 `npm run login` makes a sign-in that renews itself with a refresh token, like the Vigilo app. It needs a private `.data/mobile-client.json` with the app's OAuth settings (`clientId`, `clientSecret`, `redirectUri`, `authority`), which is not included. Never publish this file or use someone else's. The sign-in opens Chrome with a temporary profile that is deleted afterwards.
 
 - When `.data/mobile-session.json` exists, the server uses it instead of the browser sign-in.
-- A file lock stops two processes from renewing at the same time (`lockf` on macOS, `flock` on Linux).
+- A lock stops two processes from renewing the same sign-in at the same time (`lockf` on macOS, `flock` on Linux). Renewal therefore does not work on Windows.
 - The server also runs on Linux with a renewable sign-in made on another computer. Copy `mobile-client.json` and `mobile-session.json` to `.data/`. A renewal can replace the refresh token, so use the copy on one computer only.
 
 ## How it works
 
-The server runs on your computer and talks to the AI client over stdio. It uses the renewable sign-in if there is one, and otherwise the browser sign-in, both saved in `.data/`. `mcp-format.js` marks every result as untrusted content from Vigilo and keeps error messages generic.
+The server runs on your computer and talks to the AI client over stdio. It uses the renewable sign-in if there is one, and otherwise the browser sign-in, both saved in `.data/`. `mcp-format.js` marks every result as untrusted content from Vigilo, and only error messages the server wrote itself are shown. Text is stripped of invisible characters that can hide instructions from you but not from the AI.
 
 ```mermaid
 flowchart LR
@@ -111,13 +111,14 @@ Set these in the client config (and in Terminal for the login commands):
 
 ## Troubleshooting
 
-- **"Vigilo-innloggingen må fornyes".** The sign-in is missing or has expired. Run `npm run login:browser` again, or `npm run login` if you use the renewable sign-in.
+- **"… Kjør npm run login på nytt" (or `login:browser`).** The sign-in is missing, has expired or is unreadable. Run the command the message names.
 - **"Vigilos appoppsett mangler" or "er ufullstendig".** `npm run login` needs a complete `.data/mobile-client.json`. Use `npm run login:browser` instead.
-- **"Innloggingen tok mer enn ti minutter".** Sign-in must finish within ten minutes. Choose your affiliation and open **Foreldreportal** if asked. The window closes when the portal has loaded.
+- **"Innloggingen tok mer enn ti minutter" or "Innloggingsvinduet ble lukket".** Sign-in must finish within ten minutes, in the window it opens. Choose your affiliation and open **Foreldreportal** if asked. The window closes when the portal has loaded.
 - **"Playwright mangler".** Run `npm install` in the project folder.
 - **The client can't start the server.** Use full paths for both `node` (from `command -v node`) and `src/server.js`.
-- **"Ugyldige argumenter til Vigilo-verktøyet".** An ID or a date has the wrong format. Use IDs from `list_children` and dates as `YYYY-MM-DD`.
+- **"Ugyldig …" or "… må være på format YYYY-MM-DD".** The message names the ID or date with the wrong format. Use IDs from `list_children` and dates as `YYYY-MM-DD`.
 - **"Vigilo-svaret er for stort".** Use a shorter date range. Attachments over 10 MB are refused.
+- **"Kunne ikke kontakte Vigilo…" or "Vigilo-økten er opptatt".** The network is down, or another process is renewing the sign-in. Try again shortly; you don't need to sign in again.
 - **"Vigilo-kallet kunne ikke fullføres".** Other errors are not shown in detail. Check the network and the IDs, and try again.
 
 ## Security and privacy

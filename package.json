@@ -1,6 +1,6 @@
 {
   "name": "vigilo-local-mcp",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "license": "0BSD",
   "private": true,
   "type": "module",
@@ -8,7 +8,6 @@
   "scripts": {
     "login": "node src/login-mobile.js",
     "login:browser": "node src/login.js",
-    "login:renewable": "node src/login-mobile.js",
     "start": "node src/server.js",
     "test": "node --test"
   },

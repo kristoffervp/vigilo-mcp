@@ -1,17 +1,17 @@
 import { readFile } from 'node:fs/promises';
-import { browserChannel, loadPlaywright, portalOrigin, profilePath, savePrivateJson, sessionPath, tokenExpiry } from './browser.js';
-import { currentMobileSession, readMobileSession } from './mobile-auth.js';
+import { PublicError, authCookies, bearerSession, browserChannel, loadPlaywright, portalOrigin, profilePath, savePrivateJson, sessionPath } from './browser.js';
+import { currentMobileSession, readMobileSession, withSessionLock } from './mobile-auth.js';
 
 let renewal;
 
 async function loadSavedSession() {
   try { return JSON.parse(await readFile(sessionPath, 'utf8')); }
-  catch { throw new Error('Ingen lokal Vigilo-økt. Kjør npm run login:browser først.'); }
+  catch { throw new PublicError('Ingen lokal Vigilo-økt. Kjør npm run login:browser først.'); }
 }
 
 async function renewWithBrowser(previous) {
   if (!previous.browserStorage || Object.keys(previous.browserStorage).length === 0) {
-    throw new Error('Vigilo-økten kan ikke fornyes automatisk. Kjør npm run login:browser på nytt.');
+    throw new PublicError('Vigilo-økten kan ikke fornyes automatisk. Kjør npm run login:browser på nytt.');
   }
   const { chromium } = loadPlaywright();
   const context = await chromium.launchPersistentContext(profilePath, {
@@ -31,31 +31,14 @@ async function renewWithBrowser(previous) {
     }, { origin: portalOrigin, values: previous.browserStorage });
     let resolveToken;
     const found = new Promise((resolve) => { resolveToken = resolve; });
-    const collect = async (response) => {
-      let url;
-      try { url = new URL(response.url()); } catch { return; }
-      if (url.origin !== portalOrigin || !url.pathname.startsWith('/api/') || response.status() < 200 || response.status() >= 300) return;
-      const headers = await response.request().allHeaders();
-      const match = /^Bearer\s+(.+)$/i.exec(headers.authorization || '');
-      if (!match || (tokenExpiry(match[1]) || 0) <= Date.now() + 60_000) return;
-      const page = response.request().frame().page();
-      const browserStorage = await page.evaluate(() => Object.fromEntries(
-        Array.from({ length: sessionStorage.length }, (_, i) => {
-          const key = sessionStorage.key(i);
-          return key?.startsWith('oidc.user:') ? [key, sessionStorage.getItem(key)] : null;
-        }).filter(Boolean),
-      ));
-      resolveToken({ accessToken: match[1], expiresAt: tokenExpiry(match[1]), capturedAt: Date.now(), browserStorage });
-    };
-    context.on('response', (response) => { collect(response).catch(() => {}); });
+    context.on('response', (response) => { bearerSession(response).then((found) => found && resolveToken(found), () => {}); });
     const page = context.pages()[0] || await context.newPage();
     page.goto(`${portalOrigin}/`, { timeout: 0 }).catch(() => {});
     const timeout = new Promise((_, reject) => {
-      timeoutId = setTimeout(() => reject(new Error('Vigilo-økten må fornyes i Chrome. Kjør npm run login:browser på nytt.')), 60_000);
+      timeoutId = setTimeout(() => reject(new PublicError('Vigilo-økten må fornyes i Chrome. Kjør npm run login:browser på nytt.')), 60_000);
     });
     const current = await Promise.race([found, timeout]);
-    current.authCookies = (await context.cookies()).filter((cookie) =>
-      cookie.domain === 'auth.prod.vigilo-oas.no' || cookie.domain === '.auth.prod.vigilo-oas.no');
+    current.authCookies = authCookies(await context.cookies());
     await savePrivateJson(sessionPath, current);
     return current;
   } finally {
@@ -64,15 +47,23 @@ async function renewWithBrowser(previous) {
   }
 }
 
+// Two processes (Claude Desktop and the dashboard on one computer) can need a renewal at once, and a second
+// Chrome cannot open the same profile, so renewal runs under a lock and reuses what the first one saved.
+function renewLocked() {
+  return withSessionLock(`${sessionPath}.lock`, async () => {
+    const saved = await loadSavedSession();
+    if (saved.accessToken && saved.expiresAt > Date.now() + 60_000) return saved;
+    return renewWithBrowser(saved);
+  });
+}
+
 export async function currentSession() {
-  try {
-    await readMobileSession();
-    return currentMobileSession();
-  } catch (error) {
-    if (error.code !== 'ENOENT') throw error;
-  }
+  let mobile;
+  try { mobile = await readMobileSession(); }
+  catch (error) { if (error.code !== 'ENOENT') throw error; }
+  if (mobile) return currentMobileSession(mobile);
   const saved = await loadSavedSession();
   if (saved.accessToken && saved.expiresAt > Date.now() + 60_000) return saved;
-  if (!renewal) renewal = renewWithBrowser(saved).finally(() => { renewal = undefined; });
+  if (!renewal) renewal = renewLocked().finally(() => { renewal = undefined; });
   return renewal;
 }

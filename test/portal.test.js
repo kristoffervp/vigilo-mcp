@@ -1,9 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, stat } from 'node:fs/promises';
+import { lstat, mkdtemp, readdir, readFile, rm, stat, symlink, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { tokenExpiry } from '../src/browser.js';
+import { tokenExpiry, writePrivateFile } from '../src/browser.js';
 import { Portal } from '../src/portal.js';
 
 test('token expiry is read without exposing token contents', () => {
@@ -202,5 +202,43 @@ test('attachments are saved privately and only their path is returned', async ()
     assert.equal(result.path, join(directory, 'thread_attachment.pdf'));
     assert.equal((await readFile(result.path)).toString(), '%PDF-test');
     assert.equal((await stat(result.path)).mode & 0o777, 0o600);
+  } finally { await rm(directory, { recursive: true, force: true }); }
+});
+
+test('hidden characters are removed and a cut emoji is not left half', async () => {
+  const hidden = 'Les\u200b dette\u202e\u{E0041}\u{E0042}';
+  const portal = new Portal({
+    sessionProvider: async () => ({ accessToken: 'test' }),
+    fetcher: async () => new Response(JSON.stringify([{ id: 'n', title: hidden, text: `${'a'.repeat(19_999)}😀` }])),
+  });
+  const [item] = (await portal.listNews({ child_id: 'child' })).items;
+  assert.equal(item.title, 'Les dette');
+  assert.equal(item.text.isWellFormed(), true);
+  assert.equal(item.text.at(-1), '\uFFFD');
+  assert.equal(item.textTruncated, true);
+});
+
+test('an API redirect is not followed', async () => {
+  let options;
+  const portal = new Portal({
+    sessionProvider: async () => ({ accessToken: 'test' }),
+    fetcher: async (url, init) => { options = init; return new Response('', { status: 302, headers: { location: 'https://example.invalid/' } }); },
+  });
+  await assert.rejects(portal.listChildren(), /HTTP 302/);
+  assert.equal(options.redirect, 'manual');
+});
+
+test('a private write replaces a symlink instead of writing through it', async () => {
+  const directory = await mkdtemp(join(tmpdir(), 'vigilo-mcp-write-'));
+  try {
+    const target = join(directory, 'elsewhere.txt');
+    const path = join(directory, 'session.json');
+    await writeFile(target, 'keep');
+    await symlink(target, path);
+    await writePrivateFile(path, 'new');
+    assert.equal(await readFile(target, 'utf8'), 'keep');
+    assert.equal(await readFile(path, 'utf8'), 'new');
+    assert.equal((await lstat(path)).isSymbolicLink(), false);
+    assert.deepEqual((await readdir(directory)).sort(), ['elsewhere.txt', 'session.json']);
   } finally { await rm(directory, { recursive: true, force: true }); }
 });
