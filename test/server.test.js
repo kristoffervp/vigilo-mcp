@@ -54,10 +54,12 @@ test('MCP rejects oversized input and never echoes a malformed token file', asyn
     child.stdin.write(JSON.stringify({ jsonrpc: '2.0', id: 3, method: 'tools/call',
       params: { name: 'list_children', arguments: {} } }) + '\n');
     await done;
-    assert.equal(replies[0].error.message, 'Request too large');
-    assert.deepEqual(replies[1].result, {});
-    assert.equal(replies[2].result.isError, true);
-    assert.equal(replies[2].result.content[0].text, 'Vigilo-kallet kunne ikke fullføres.');
+    // Requests run concurrently, so replies are matched by id.
+    const byId = new Map(replies.map((reply) => [reply.id, reply]));
+    assert.equal(byId.get(null).error.message, 'Request too large');
+    assert.deepEqual(byId.get(2).result, {});
+    assert.equal(byId.get(3).result.isError, true);
+    assert.equal(byId.get(3).result.content[0].text, 'Den lagrede Vigilo-økten er uleselig. Kjør npm run login på nytt.');
     assert.equal(JSON.stringify(replies).includes('SENSITIVE-TEST-TOKEN'), false);
   } finally {
     child.kill();

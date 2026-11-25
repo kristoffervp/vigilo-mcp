@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { PublicError } from '../src/browser.js';
 import { publicFailure, toolResult } from '../src/mcp-format.js';
 
 test('external message text is marked untrusted in structured and text output', () => {
@@ -13,19 +14,18 @@ test('external message text is marked untrusted in structured and text output', 
   assert.throws(() => toolResult({ message: 'x'.repeat(500_000) }), /for stort/);
 });
 
-test('raw parser errors cannot echo private file contents', () => {
+test('only messages this code wrote reach the client', () => {
   const secret = 'SENSITIVE-TEST-TOKEN';
-  assert.equal(publicFailure(new SyntaxError(`Unexpected token near ${secret}`)),
-    'Vigilo-kallet kunne ikke fullføres.');
-  assert.equal(publicFailure(new Error('Kjør npm run login:renewable på nytt.')),
-    'Vigilo-innloggingen må fornyes. Kjør npm run login:renewable på nytt.');
+  assert.equal(publicFailure(new SyntaxError(`Unexpected token near ${secret}`)), 'Vigilo-kallet kunne ikke fullføres.');
+  assert.equal(publicFailure(new Error(`ENOENT: /Users/someone/${secret}`)), 'Vigilo-kallet kunne ikke fullføres.');
+  assert.equal(publicFailure(new PublicError('Vigilo-innloggingen må fornyes. Kjør npm run login på nytt.')),
+    'Vigilo-innloggingen må fornyes. Kjør npm run login på nytt.');
 });
 
-test('sign-in errors keep the command for the sign-in in use', () => {
-  assert.equal(publicFailure(new Error('Vigilo-økten må fornyes i Chrome. Kjør npm run login:browser på nytt.')),
-    'Vigilo-innloggingen må fornyes. Kjør npm run login:browser på nytt.');
-  assert.equal(publicFailure(new Error('Vigilo-innloggingen må fornyes. Kjør npm run login på nytt.')),
-    'Vigilo-innloggingen må fornyes. Kjør npm run login på nytt.');
-  assert.equal(publicFailure(new Error('Vigilo-innloggingen kunne ikke fullføres.')),
-    'Vigilo-innloggingen må fornyes. Kjør npm run login:browser på nytt, eller npm run login hvis du bruker fornybar innlogging.');
+test('a network or server failure during renewal is not reported as an expired sign-in', () => {
+  // The dashboard treats "må fornyes" and "npm run login" as a sign-in that needs renewing.
+  for (const message of ['Kunne ikke kontakte Vigilos innloggingstjeneste.', 'Vigilos innloggingstjeneste svarte HTTP 503.']) {
+    assert.equal(publicFailure(new PublicError(message)), message);
+    assert.doesNotMatch(message, /må fornyes|npm run login/);
+  }
 });

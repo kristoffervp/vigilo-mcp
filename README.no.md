@@ -67,12 +67,12 @@ Serveren fornyer nettleserinnloggingen i Chrome uten vindu så lenge Vigilos net
 `npm run login` lager en innlogging som fornyer seg selv med et fornyelsestoken, slik Vigilo-appen gjør. Den trenger en privat `.data/mobile-client.json` med appens OAuth-oppsett (`clientId`, `clientSecret`, `redirectUri`, `authority`), som ikke følger med. Publiser aldri denne filen, og bruk aldri andres. Innloggingen åpner Chrome med en midlertidig profil som slettes etterpå.
 
 - Når `.data/mobile-session.json` finnes, bruker serveren den i stedet for nettleserinnloggingen.
-- En fillås hindrer at to prosesser fornyer samtidig (`lockf` på macOS, `flock` på Linux).
+- En lås hindrer at to prosesser fornyer samme innlogging samtidig (`lockf` på macOS, `flock` på Linux). Derfor virker ikke fornyelsen på Windows.
 - Serveren kjører også på Linux med en fornybar innlogging laget på en annen datamaskin. Kopier `mobile-client.json` og `mobile-session.json` til `.data/`. En fornyelse kan bytte ut fornyelsestokenet, så bruk kopien på bare én datamaskin.
 
 ## Slik virker det
 
-Serveren kjører på datamaskinen din og snakker med KI-klienten over stdio. Den bruker den fornybare innloggingen hvis den finnes, og ellers nettleserinnloggingen, begge lagret i `.data/`. `mcp-format.js` merker hvert svar som ikke-betrodd innhold fra Vigilo og holder feilmeldingene generelle.
+Serveren kjører på datamaskinen din og snakker med KI-klienten over stdio. Den bruker den fornybare innloggingen hvis den finnes, og ellers nettleserinnloggingen, begge lagret i `.data/`. `mcp-format.js` merker hvert svar som ikke-betrodd innhold fra Vigilo, og bare feilmeldinger serveren selv har skrevet, vises. Usynlige tegn som kan skjule instruksjoner for deg, men ikke for KI-en, fjernes fra teksten.
 
 ```mermaid
 flowchart LR
@@ -111,13 +111,14 @@ Settes i klientoppsettet (og i Terminal for innloggingskommandoene):
 
 ## Feilsøking
 
-- **«Vigilo-innloggingen må fornyes».** Innloggingen mangler eller er utløpt. Kjør `npm run login:browser` på nytt, eller `npm run login` hvis du bruker den fornybare innloggingen.
+- **«… Kjør npm run login på nytt» (eller `login:browser`).** Innloggingen mangler, er utløpt eller kan ikke leses. Kjør kommandoen meldingen nevner.
 - **«Vigilos appoppsett mangler» eller «er ufullstendig».** `npm run login` trenger en komplett `.data/mobile-client.json`. Bruk `npm run login:browser` i stedet.
-- **«Innloggingen tok mer enn ti minutter».** Innloggingen må fullføres innen ti minutter. Velg tilhørighet og åpne **Foreldreportal** hvis du blir bedt om det. Vinduet lukkes når portalen har lastet.
+- **«Innloggingen tok mer enn ti minutter» eller «Innloggingsvinduet ble lukket».** Innloggingen må fullføres innen ti minutter, i vinduet som åpnes. Velg tilhørighet og åpne **Foreldreportal** hvis du blir bedt om det. Vinduet lukkes når portalen har lastet.
 - **«Playwright mangler».** Kjør `npm install` i prosjektmappen.
 - **Klienten får ikke startet serveren.** Bruk hele stien til både `node` (fra `command -v node`) og `src/server.js`.
-- **«Ugyldige argumenter til Vigilo-verktøyet».** En ID eller dato har feil format. Bruk ID-er fra `list_children` og datoer som `ÅÅÅÅ-MM-DD`.
+- **«Ugyldig …» eller «… må være på format YYYY-MM-DD».** Meldingen sier hvilken ID eller dato som har feil format. Bruk ID-er fra `list_children` og datoer som `ÅÅÅÅ-MM-DD`.
 - **«Vigilo-svaret er for stort».** Bruk en kortere datoperiode. Vedlegg over 10 MB avvises.
+- **«Kunne ikke kontakte Vigilo…» eller «Vigilo-økten er opptatt».** Nettet er nede, eller en annen prosess fornyer innloggingen. Prøv igjen om litt; du trenger ikke logge inn på nytt.
 - **«Vigilo-kallet kunne ikke fullføres».** Andre feil vises ikke i detalj. Sjekk nettverket og ID-ene, og prøv igjen.
 
 ## Sikkerhet og personvern

@@ -1,5 +1,5 @@
 import { readFile, rm } from 'node:fs/promises';
-import { browserChannel, ensurePrivateDataDir, loadPlaywright, mobileProfilePath, sessionPath } from './browser.js';
+import { authCookies, browserChannel, ensurePrivateDataDir, loadPlaywright, mobileProfilePath, sessionPath } from './browser.js';
 import { exchangeMobileCode, mobileConfig } from './mobile-auth.js';
 import { captureMobileRedirect, mobileCallbackCode, newOauthAttempt } from './oauth.js';
 
@@ -17,15 +17,11 @@ async function loginMobile() {
   const context = await browser.newContext({ acceptDownloads: false, viewport: { width: 1280, height: 960 } });
   let timer;
   try {
-    const existingCookies = await context.cookies('https://auth.prod.vigilo-oas.no');
     let cookies = [];
     try {
       const previous = JSON.parse(await readFile(sessionPath, 'utf8'));
       if (Array.isArray(previous.authCookies)) {
-        cookies = previous.authCookies.filter((cookie) =>
-          (cookie.domain === 'auth.prod.vigilo-oas.no' || cookie.domain === '.auth.prod.vigilo-oas.no') &&
-          (cookie.expires === -1 || cookie.expires * 1000 > Date.now()) &&
-          !existingCookies.some((current) => current.name === cookie.name && current.path === cookie.path));
+        cookies = authCookies(previous.authCookies).filter((cookie) => cookie.expires === -1 || cookie.expires * 1000 > Date.now());
       }
     } catch {}
     if (cookies.length > 0) await context.addCookies(cookies);
@@ -37,6 +33,7 @@ async function loginMobile() {
       rejectCallback = reject;
       timer = setTimeout(() => reject(new Error('Innloggingen tok mer enn ti minutter. Kjør npm run login på nytt.')), 600_000);
     });
+    browser.on('disconnected', () => rejectCallback(new Error('Innloggingsvinduet ble lukket før innloggingen var ferdig. Kjør npm run login på nytt.')));
     let callback = waitForCallback();
     const capture = (url) => {
       try {
@@ -88,7 +85,7 @@ async function loginMobile() {
       }
     }
     console.log('Vigilo-økten med automatisk fornyelse er lagret lokalt.');
-    // Versjoner før 0.2.1 beholdt nettleserprofilen i .data/mobile-browser-profile/.
+    // shortcut: versjoner før 0.2.1 beholdt nettleserprofilen i .data/mobile-browser-profile/, fjern i 0.5.
     await rm(mobileProfilePath, { recursive: true, force: true });
   } finally {
     clearTimeout(timer);
