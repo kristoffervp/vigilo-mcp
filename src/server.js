@@ -21,7 +21,7 @@ const tools = [
       from_date: { type: 'string', description: 'YYYY-MM-DD; standard 90 dager tilbake' },
       to_date: { type: 'string', description: 'YYYY-MM-DD; standard i morgen' } },
       required: ['child_id'], additionalProperties: false } },
-  { name: 'get_after_school_status', description: 'Les siste registrerte inn-/utsjekk for ett barn på AKS/SFO. Manglende registrering gir ukjent status; dette er ikke en garanti for faktisk oppholdssted.',
+  { name: 'get_after_school_status', description: 'Les inn- og utsjekk for ett barn på AKS/SFO en dag: siste status og hver periode med klokkeslett (periods, også morgen-AKS før skolen). Manglende registrering gir ukjent status; dette er ikke en garanti for faktisk oppholdssted.',
     inputSchema: { type: 'object', properties: {
       child_id: { type: 'string' }, date: { type: 'string', description: 'YYYY-MM-DD; standard dagens dato i Norge' },
     }, required: ['child_id'], additionalProperties: false } },
@@ -53,7 +53,7 @@ async function handle(request) {
     if (method === 'initialize') {
       const requested = params.protocolVersion;
       return result(id, { protocolVersion: supportedVersions.has(requested) ? requested : '2025-11-25',
-        capabilities: { tools: {} }, serverInfo: { name: 'vigilo-local-mcp', version: '0.2.0' } });
+        capabilities: { tools: {} }, serverInfo: { name: 'vigilo-local-mcp', version: '0.3.0' } });
     }
     if (method === 'ping') return result(id, {});
     if (method === 'tools/list') return result(id, { tools });

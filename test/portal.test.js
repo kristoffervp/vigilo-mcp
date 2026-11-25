@@ -88,8 +88,43 @@ test('AKS status uses the latest valid registration and never exposes unrelated 
   assert.equal(requestedUrl.pathname, '/api/children/child/overview');
   assert.equal(requestedUrl.searchParams.get('date'), '2026-10-07');
   assert.deepEqual(result, { date: '2026-10-07', status: 'checked_out',
-    lastRegistrationAt: '2026-10-07T15:00:00+02:00', registeredEvents: 2 });
+    lastRegistrationAt: '2026-10-07T15:00:00+02:00', registeredEvents: 2,
+    periods: [{ checkIn: { time: '2026-10-07T08:00:00+02:00', localTime: '08:00' },
+      checkOut: { time: '2026-10-07T15:00:00+02:00', localTime: '15:00' } }] });
   assert.equal(JSON.stringify(result).includes('SECRET'), false);
+});
+
+test('AKS periods cover morning and afternoon, in Oslo time, without who registered them', async () => {
+  const by = { id: 'person-id', firstName: 'PERSON-NAME', lastName: 'PERSON-NAME' };
+  const portal = new Portal({
+    sessionProvider: async () => ({ accessToken: 'test' }),
+    fetcher: async () => new Response(JSON.stringify({ checkIns: [
+      { id: 'a', type: 'checkIn', time: '2026-11-24T12:48:48Z', registeredByByPerson: by },
+      { id: 'b', type: 'checkOut', time: '2026-11-24T07:20:00Z', registeredByByPerson: by },
+      { id: 'c', type: 'checkIn', time: '2026-11-24T06:45:00Z', registeredByByPerson: by },
+    ] })),
+  });
+  const result = await portal.getAfterSchoolStatus({ child_id: 'child', date: '2026-11-24' });
+  assert.equal(result.status, 'checked_in');
+  assert.deepEqual(result.periods, [
+    { checkIn: { time: '2026-11-24T06:45:00Z', localTime: '07:45' },
+      checkOut: { time: '2026-11-24T07:20:00Z', localTime: '08:20' } },
+    { checkIn: { time: '2026-11-24T12:48:48Z', localTime: '13:48' }, checkOut: null },
+  ]);
+  assert.equal(JSON.stringify(result).includes('PERSON'), false);
+});
+
+test('AKS check-out without a check-in gets its own period', async () => {
+  const portal = new Portal({
+    sessionProvider: async () => ({ accessToken: 'test' }),
+    fetcher: async () => new Response(JSON.stringify({ checkIns: [
+      { type: 'checkOut', time: '2026-11-24T14:50:00Z' },
+    ] })),
+  });
+  const result = await portal.getAfterSchoolStatus({ child_id: 'child', date: '2026-11-24' });
+  assert.deepEqual(result.periods, [
+    { checkIn: null, checkOut: { time: '2026-11-24T14:50:00Z', localTime: '15:50' } },
+  ]);
 });
 
 test('AKS status is unknown when no check-in or check-out is registered', async () => {
@@ -101,6 +136,7 @@ test('AKS status is unknown when no check-in or check-out is registered', async 
   assert.equal(result.status, 'unknown');
   assert.equal(result.lastRegistrationAt, null);
   assert.equal(result.registeredEvents, 0);
+  assert.deepEqual(result.periods, []);
 });
 
 test('message and news responses allow only selected fields and cap item counts', async () => {

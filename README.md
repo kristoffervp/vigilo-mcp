@@ -46,7 +46,7 @@ npm run login:browser
 | `list_message_threads` | Message threads for one child, after-school units included unless `include_after_school` is `false`. Filters: `from_date`, `to_date` |
 | `get_message_thread` | One thread with its messages, without changing the read status |
 | `list_news` | News posts for one child. Filters: `from_date`, `to_date` |
-| `get_after_school_status` | The latest registered SFO/AKS check-in or check-out for one child on a `date` |
+| `get_after_school_status` | SFO/AKS check-ins and check-outs for one child on a `date`, with times |
 | `get_schedule` | Lessons and calendar events for the week that contains `date` |
 | `get_message_attachment` | Saves a message attachment in `.data/downloads/` and returns the path |
 
@@ -54,7 +54,9 @@ Start with `list_children`. The other tools take a child's `id` as `child_id`, a
 
 Threads and news cover the last 90 days up to tomorrow, unless you set `from_date` and `to_date` (`YYYY-MM-DD`, at most 366 days apart). `date` defaults to today in Norway. Lists return at most 50 entries, with `total` and `truncated`, and a thread shows its last 50 messages. Text longer than 20,000 characters is cut and marked `textTruncated`. Results are returned as `structuredContent` and as JSON text.
 
-`get_after_school_status` returns `checked_in`, `checked_out` or `unknown`, with the time of the latest registration. It shows what staff registered in Vigilo, which can differ from where the child is.
+`get_after_school_status` returns `checked_in`, `checked_out` or `unknown`, with the time of the latest registration. `periods` lists each check-in with its check-out, as UTC `time` and Oslo `localTime` (`HH:MM`). A day can have more than one period, for example morning AKS before school and AKS after school. A period still open has `checkOut: null`. It shows what staff registered in Vigilo, which can differ from where the child is.
+
+Vigilo also says who registered each check-in or check-out (staff or a parent). The server leaves the name out. If you need it, an opt-in flag could be added.
 
 `get_message_attachment` accepts files up to 10 MB and returns only the path, type and size, so the client must be able to read local files to open it. Types other than PDF, JPEG, PNG, plain text and Word (`.docx`) are saved with `.bin`.
 
