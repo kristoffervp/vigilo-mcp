@@ -10,7 +10,7 @@
 
 <p align="center">Norsk · <a href="README.md">English</a></p>
 
-En lokal MCP-server som lar en KI-klient lese Vigilos foreldreportal: meldinger, oppslag, timeplanen, inn- og utsjekk på AKS/SFO og meldingsvedlegg. Den leser bare, og kan ikke sende meldinger eller endre noe i Vigilo.
+En lokal MCP-server som lar en KI-klient lese Vigilos foreldreportal: meldinger, oppslag, timeplanen, inn- og utsjekk på AKS/SFO og meldingsvedlegg. Som standard leser den bare. Svar, fraværsmeldinger, hentemeldinger og booking av møter må slås på (se [Sending](#sending-må-slås-på)).
 
 **Uoffisiell.** Ikke laget av eller knyttet til Vigilo AS, skolen eller kommunen. Den bruker udokumenterte endepunkter som kan endres uten varsel.
 
@@ -49,6 +49,12 @@ npm run login:browser
 | `get_after_school_status` | Inn- og utsjekk på SFO/AKS for ett barn på en `date`, med klokkeslett |
 | `get_schedule` | Skoletimer og kalenderhendelser for uken som inneholder `date` |
 | `get_message_attachment` | Lagrer et meldingsvedlegg i `.data/downloads/` og gir stien |
+| `list_contacts` | Ansatte du kan skrive til om et barn ved en enhet, med kontaktlærere |
+| `list_absences` | Registrert fravær på skole og AKS/SFO, med om det kan slettes |
+| `list_absence_codes` | Fraværskodene en enhet bruker |
+| `list_checkout_notes` | Hentemeldinger på AKS/SFO: hvem som henter, når, eller at barnet går hjem selv. Standard fire uker fra i dag |
+| `list_checkout_note_types` | Typene hentemelding AKS/SFO tilbyr |
+| `list_meeting_invitations` | Møteinvitasjoner, for eksempel utviklingssamtale, med ledige tider |
 
 Begynn med `list_children`. De andre verktøyene tar barnets `id` som `child_id`, og `get_schedule` kan ta en skoleenhets `id` som `school_unit_id`. Uten den brukes barnets første skoleenhet.
 
@@ -59,6 +65,31 @@ Tråder og oppslag gjelder de siste 90 dagene fram til i morgen, med mindre du s
 Vigilo sier også hvem som registrerte inn- eller utsjekken (ansatt eller forelder). Serveren tar ikke med navnet. Trenger du det, kan det legges til et valg for det.
 
 `get_message_attachment` tar filer opptil 10 MB og gir bare sti, type og størrelse, så klienten må kunne lese lokale filer for å åpne den. Andre typer enn PDF, JPEG, PNG, ren tekst og Word (`.docx`) lagres med `.bin`.
+
+## Sending (må slås på)
+
+Sett `VIGILO_ALLOW_SEND=1` (i `"env"` i klientoppsettet) for å få disse verktøyene. **Ikke prøvd mot den ekte tjenesten ennå:** forespørslene følger koden i foreldreportalen, så sjekk resultatet i Vigilo første gang du bruker hvert av dem.
+
+| Verktøy | Hva det gjør |
+| --- | --- |
+| `prepare_reply` | Et svar i en meldingstråd |
+| `prepare_message` | En ny melding til ansatte fra `list_contacts` (høyst 10) |
+| `prepare_absence` | En fraværsmelding fra i dag eller senere: til kontaktlærerne på skolen, eller til AKS/SFO |
+| `prepare_delete_absence` | Sletter et fravær Vigilo merker som mulig å slette |
+| `prepare_checkout_note` | En hentemelding: en type fra `list_checkout_note_types`, et klokkeslett (kvarter, senest 18:00), hverdager, og eventuelt ukentlig |
+| `prepare_delete_checkout_note` | Sletter en hentemelding |
+| `prepare_book_meeting` | Velger en ledig tid i en møteinvitasjon |
+| `send_prepared` | Sender det et prepare-verktøy har forberedt |
+| `mark_thread_read` | Merker en tråd som lest, i ett steg |
+
+Alt som sendes, går i to steg. Et prepare-verktøy sjekker forespørselen mot kontoen din og gir nøyaktig det som vil bli sendt, en `summary` på én linje og en engangskode. Da er ingenting sendt. `send_prepared` trenger koden og den samme `summary`, så godkjenningen i klienten viser hva som sendes. Den sender én gang, og koden går ut etter 10 minutter eller når serveren stopper. Støtter klienten bekreftelsesdialoger (MCP elicitation), spør serveren deg også der før `send_prepared` eller `mark_thread_read` gjør noe. Sendte, mislykkede og usikre forsøk logges i `.data/sent.jsonl`.
+
+- Velg aldri «Tillat alltid» for `send_prepared` eller `mark_thread_read` i klienten.
+- En hentemelding avgjør hvordan barnet ditt forlater AKS. Les forhåndsvisningen nøye.
+- Får du ikke et tydelig svar fra Vigilo etter en sending, kan den likevel ha kommet fram. Sjekk i Vigilo før du prøver igjen.
+- Foreldre kan ikke slette sendte meldinger i Vigilo, og en tråd kan ikke merkes som ulest igjen.
+- Bare tekst. Vedlegg støttes ikke.
+- En melding kan inneholde tekst som skal få KI-klienten til å sende noe. Les forhåndsvisningen, og la sending være av når du ikke trenger den. Ikke gi disse verktøyene til en automatisk klient som leser meldinger på egen hånd.
 
 ## Fornybar innlogging (valgfritt)
 
@@ -76,19 +107,25 @@ Serveren kjører på datamaskinen din og snakker med KI-klienten over stdio. Den
 
 ```mermaid
 flowchart LR
-  client["KI-klient<br/>for eksempel Claude Desktop"]
+  you(["Du"])
+  client["KI-klient"]
   subgraph computer["Din datamaskin"]
     server["MCP-server<br/>server.js, mcp-format.js"]
-    tools["Verktøy<br/>portal.js"]
+    tools["Leseverktøy<br/>portal.js"]
+    send["Sendeverktøy<br/>sending.js<br/>(bare med VIGILO_ALLOW_SEND=1)"]
     signin["Innlogging i bruk og fornyelse<br/>session.js, mobile-auth.js"]
     login["npm run login:browser, npm run login<br/>Chrome via Playwright<br/>login.js, login-mobile.js, oauth.js"]
-    data[(".data/<br/>innlogging, nettleserprofil,<br/>appoppsett, nedlastinger")]
+    data[(".data/<br/>innlogging, nettleserprofil,<br/>appoppsett, nedlastinger, sent.jsonl")]
   end
   idporten["ID-porten"]
   auth["Vigilo-innlogging<br/>auth.prod.vigilo-oas.no"]
   portal["Vigilos foreldreportal<br/>web-parent.prod.vigilo-oas.no"]
+  you <-->|"spør, ser forhåndsvisningen"| client
   client <-->|"MCP over stdio"| server
   server --> tools
+  server -->|"prepare → sammendrag og kode,<br/>så send_prepared"| send
+  send -.->|"ber deg bekrefte<br/>(MCP-elicitation)"| client
+  send -->|"sjekker mot kontoen,<br/>sender én gang, leser tilbake"| tools
   tools --> signin
   tools <-->|"HTTPS med innloggingen"| portal
   signin -->|"fornyer innloggingen"| auth
@@ -97,6 +134,7 @@ flowchart LR
   login -->|"Vigilo-innlogging"| auth
   login -->|"lagrer"| data
   tools -.->|"lagrer vedlegg"| data
+  send -.->|"logger det som sendes"| data
 ```
 
 ## Innstillinger
@@ -125,7 +163,8 @@ Settes i klientoppsettet (og i Terminal for innloggingskommandoene):
 
 - Serveren kjører på din datamaskin og åpner ingen nettverksport. En KI-klient du kobler til, kan likevel lese det verktøyene gir, og en KI-tjeneste i skyen får det klienten leser. Vurder selv hva du vil dele.
 - Bare utvalgte felt fra Vigilo sendes videre, merket som data og ikke instruksjoner. Det kan ikke stoppe alle forsøk på å styre KI-en gjennom en melding. Bruk klienter du stoler på, og se over verktøykallene.
-- Feilmeldinger gjentar ikke Vigilos svar eller innholdet i lokale filer.
+- Feilmeldinger gjentar ikke Vigilos svar eller innholdet i lokale filer. En avvist sending viser bare feilkoden fra Vigilo.
+- Ingenting sendes til Vigilo med mindre `VIGILO_ALLOW_SEND=1` er satt. Serveren kan ikke vite om det var du eller KI-en som godkjente: den spør deg i en dialog når klienten støtter det, ellers er godkjenningen i klienten den eneste sjekken. `mark_thread_read` er ett steg.
 - `.data/` inneholder innloggingen din, og kan bare leses av brukeren din. Med nettleserinnloggingen ligger også Chrome-profilen serveren bruker til å fornye den, der. Del den aldri. Vedlegg ligger der til du sletter dem, og stiene klienten får, kan inneholde brukernavnet ditt.
 - Se [SECURITY.md](SECURITY.md) for å melde fra om sikkerhetshull.
 

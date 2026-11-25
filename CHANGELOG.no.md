@@ -2,6 +2,11 @@
 
 [English](CHANGELOG.md)
 
+## 0.5.0 (2026-11-25)
+
+- Sending som må slås på med `VIGILO_ALLOW_SEND=1`: svare i en tråd, skrive til ansatte, melde fravær på skole eller AKS/SFO, slette et fravær, legge til eller slette en hentemelding på AKS/SFO, velge en møtetid og merke en tråd som lest. Alt som sendes, går i to steg: et `prepare_…`-verktøy, så `send_prepared` med en engangskode. `send_prepared` trenger `summary` fra prepare-verktøyet, og klienter som støtter bekreftelsesdialoger, spør forelderen der. En sending uten tydelig svar meldes som mulig sendt. Sendte, mislykkede og usikre forsøk logges i `.data/sent.jsonl`. Ikke prøvd mot den ekte tjenesten ennå.
+- Nye leseverktøy, alltid på: `list_contacts`, `list_absences`, `list_absence_codes`, `list_checkout_notes`, `list_checkout_note_types` og `list_meeting_invitations`.
+
 ## 0.4.0 (2026-11-25)
 
 - Et brudd i nettet eller en serverfeil mens innloggingen fornyes, sier ikke lenger at innloggingen må fornyes. Bare meldinger serveren selv har skrevet, vises; parser-, fil- og nettleserfeil gir fortsatt en generell melding. Feil argumenter sier nå hvilket argument det gjelder.

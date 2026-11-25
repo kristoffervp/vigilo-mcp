@@ -2,6 +2,11 @@
 
 [Norsk](CHANGELOG.no.md)
 
+## 0.5.0 (2026-11-25)
+
+- Opt-in sending with `VIGILO_ALLOW_SEND=1`: reply in a thread, write to staff, report absence at school or AKS/SFO, delete an absence, add or delete an AKS/SFO check-out note, book a meeting time, and mark a thread read. Every send takes two steps: a `prepare_…` tool, then `send_prepared` with a one-time code. `send_prepared` needs the `summary` the prepare tool returned, and clients that support confirmation dialogs ask the parent there. A send without a clear answer is reported as possibly sent. Sent, failed and uncertain attempts are logged in `.data/sent.jsonl`. Not yet tried against the live service.
+- New read tools, always on: `list_contacts`, `list_absences`, `list_absence_codes`, `list_checkout_notes`, `list_checkout_note_types` and `list_meeting_invitations`.
+
 ## 0.4.0 (2026-11-25)
 
 - A network or server failure while renewing the sign-in no longer says the sign-in must be renewed. Only messages the server wrote itself are shown; parser, file and browser errors still get a generic message. Wrong arguments now name the argument.

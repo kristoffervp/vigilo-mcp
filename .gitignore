@@ -25,6 +25,7 @@
 !/src/oauth.js
 !/src/portal.js
 !/src/server.js
+!/src/sending.js
 !/src/session.js
 !/test/
 /test/*
@@ -32,4 +33,5 @@
 !/test/mobile-auth.test.js
 !/test/oauth.test.js
 !/test/portal.test.js
+!/test/sending.test.js
 !/test/server.test.js
