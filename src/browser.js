@@ -22,10 +22,12 @@ export class PublicError extends Error {}
 
 // Format and control characters (direction overrides, zero-width and Unicode tag characters) can hide text
 // from the parent while an AI client still reads it, so they are removed from everything returned.
-const invisibleCharacters = /(?![\n\t])[\p{Cf}\p{Cc}]/gu;
+// Also blank-looking letters (Hangul fillers, braille blank, U+034F) and the extra variation selectors.
+const invisibleCharacters = /(?![\n\t])[\p{Cf}\p{Cc}\u034F\u115F\u1160\u3164\uFFA0\u2800\u{E0100}-\u{E01EF}]/gu;
 
 export function clean(text) {
-  return String(text ?? '').toWellFormed().replace(invisibleCharacters, '');
+  return String(text ?? '').toWellFormed().replace(/[\u2028\u2029]/g, '\n').replace(invisibleCharacters, '')
+    .replace(/([\uFE00-\uFE0F])[\uFE00-\uFE0F]+/g, '$1');
 }
 
 export function loadPlaywright() {

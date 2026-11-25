@@ -86,14 +86,14 @@ function newsItem(value) {
   return result;
 }
 
-function segment(value, name) {
+export function segment(value, name) {
   if (typeof value !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(value)) {
     throw new PublicError(`Ugyldig ${name}.`);
   }
   return value;
 }
 
-function dateValue(value, name) {
+export function dateValue(value, name) {
   if (value === undefined || value === null) return undefined;
   if (typeof value !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(value)) {
     throw new PublicError(`${name} må være på format YYYY-MM-DD.`);
@@ -105,7 +105,7 @@ function dateValue(value, name) {
   return value;
 }
 
-function osloToday() {
+export function osloToday() {
   return new Intl.DateTimeFormat('en-CA', {
     timeZone: 'Europe/Oslo', year: 'numeric', month: '2-digit', day: '2-digit',
   }).format(new Date());
@@ -168,7 +168,7 @@ function scheduleItem(value, kind, monday) {
   return result;
 }
 
-function addDays(date, days) {
+export function addDays(date, days) {
   return new Date(Date.parse(`${date}T00:00:00Z`) + days * dayMs).toISOString().slice(0, 10);
 }
 
@@ -187,6 +187,32 @@ async function limitedJson(response) {
   catch { throw new PublicError('Vigilo sendte et uventet svar.'); }
 }
 
+async function optionalJson(response) {
+  const text = (await readLimited(response, maxJsonBytes, 'Vigilo-svaret er for stort.')).toString('utf8');
+  try { return text ? JSON.parse(text) : null; } catch { return null; }
+}
+
+// Once a write has gone out, a lost or garbled answer does not mean it failed, so a blind retry could send it twice.
+function uncertain() {
+  const error = new PublicError('Fikk ikke et sikkert svar fra Vigilo. Det kan være sendt: sjekk i Vigilo (for eksempel med list_absences, list_checkout_notes eller meldingstråden) før du prøver på nytt.');
+  error.uncertain = true;
+  return error;
+}
+
+async function writeReply(response) {
+  let text;
+  try { text = (await readLimited(response, maxJsonBytes, 'for stort')).toString('utf8'); } catch { throw uncertain(); }
+  if (!text) return null;
+  try { return JSON.parse(text); } catch { throw uncertain(); }
+}
+
+// Vigilo explains a refused write with an error code such as absence_dates_overlapped_by_absence.
+async function refusal(response) {
+  const data = await optionalJson(response).catch(() => null);
+  const code = data?.errorCode ?? data?.error?.errorCode;
+  return typeof code === 'string' && /^[A-Za-z_]{1,64}$/.test(code) ? `, ${code}` : '';
+}
+
 export class Portal {
   #sessionProvider;
   #fetcher;
@@ -199,7 +225,7 @@ export class Portal {
     this.#downloadDir = downloadDir;
   }
 
-  async #request(path, query, { binary = false } = {}) {
+  async #request(path, query, { binary = false, method = 'GET', body, headers } = {}) {
     let session = await this.#sessionProvider();
     const url = new URL(`${apiOrigin}${path}`);
     if (url.origin !== portalOrigin || !url.pathname.startsWith('/api/')) throw new PublicError('Ugyldig Vigilo-adresse.');
@@ -207,10 +233,16 @@ export class Portal {
     const send = async () => {
       try {
         return await this.#fetcher(url, {
-          headers: { Authorization: `Bearer ${session.accessToken}`, Accept: binary ? '*/*' : 'application/json' },
+          method,
+          headers: { Authorization: `Bearer ${session.accessToken}`, Accept: binary ? '*/*' : 'application/json',
+            ...(body === undefined ? {} : { 'Content-Type': 'application/json' }), ...headers },
+          ...(body === undefined ? {} : { body: JSON.stringify(body) }),
           redirect: 'manual', signal: AbortSignal.timeout(30_000),
         });
-      } catch { throw new PublicError('Kunne ikke kontakte Vigilo. Kontroller nettverket og prøv igjen.'); }
+      } catch {
+        if (method !== 'GET') throw uncertain();
+        throw new PublicError('Kunne ikke kontakte Vigilo. Kontroller nettverket og prøv igjen.');
+      }
     };
     let response = await send();
     if (response.status === 401 && session.refreshToken) {
@@ -219,9 +251,19 @@ export class Portal {
     }
     // En fornybar innlogging har refreshToken; ellers er det nettleserinnloggingen.
     if (response.status === 401) throw new PublicError(`Vigilo-økten er utløpt. Kjør ${session.refreshToken ? 'npm run login' : 'npm run login:browser'} på nytt.`);
-    if (!response.ok) throw new PublicError(`Vigilo svarte med HTTP ${response.status}.`);
+    if (!response.ok) {
+      // A redirect or server error after a write may still mean Vigilo processed it.
+      if (method !== 'GET' && (response.status >= 500 || (response.status >= 300 && response.status < 400))) throw uncertain();
+      const detail = method === 'GET' ? '' : await refusal(response);
+      throw new PublicError(`Vigilo svarte med HTTP ${response.status}${detail}.`);
+    }
     if (binary) return response;
-    return limitedJson(response);
+    return method === 'GET' ? limitedJson(response) : writeReply(response);
+  }
+
+  // For src/sending.js: any API call, with the same address check, timeout and sign-in renewal as the reads.
+  call(method, path, { query, body, headers } = {}) {
+    return this.#request(path, query, { method, body, headers });
   }
 
   async listChildren() {
