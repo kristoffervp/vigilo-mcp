@@ -17,6 +17,7 @@
 !/package-lock.json
 !/src/
 /src/*
+!/src/attachments.js
 !/src/browser.js
 !/src/login.js
 !/src/login-mobile.js
@@ -29,6 +30,7 @@
 !/src/session.js
 !/test/
 /test/*
+!/test/attachments.test.js
 !/test/mcp-format.test.js
 !/test/mobile-auth.test.js
 !/test/oauth.test.js

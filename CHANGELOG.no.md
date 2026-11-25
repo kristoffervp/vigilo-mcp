@@ -2,6 +2,15 @@
 
 [English](CHANGELOG.md)
 
+## 0.6.0 (2026-11-25)
+
+- Vedlegg på `prepare_reply`, `prepare_message` og `prepare_absence` (bare til skolen). Av med mindre `VIGILO_ATTACHMENTS_DIR` peker på en mappe; bare PDF-, PNG- og JPEG-filer i den, sjekket ut fra innholdet, høyst 5 filer på 5 MB hver og 10 MB til sammen. Filene leses når handlingen forberedes, og forhåndsvisningen viser hver fil med størrelse og en kort sha256.
+- Nye sendeverktøy (med `VIGILO_ALLOW_SEND=1`): `prepare_edit_checkout_note` (endre eller korte ned en hentemelding, med før og etter), `prepare_edit_absence` (nye datoer for et skolefravær Vigilo lar endres), `prepare_registration_reply` (svare på en påmelding) og `mark_news_read`. En endring stoppes når den sendes hvis hentemeldingen eller fraværet er endret etter forhåndsvisningen.
+- Nye leseverktøy, alltid på: `list_registrations`, `list_required_actions` og `list_consent_forms`. `list_news` viser `type` og `isRead`; `list_absences` og `list_checkout_notes` viser hva som kan endres.
+- Vedleggsfiler må ligge rett i mappen; undermapper, harde lenker og navn med linjeskift avvises.
+- Hentemeldinger: en hentemelding annenhver uke beholder intervallet når den endres, typen avgjør om kommentar kreves eller ikke er lov, som i portalen (høyst 200 tegn), og fristen hos AKS sjekkes på nytt når den sendes. Skolefravær trenger en kommentar, som i portalen. En hentemelding kan bare slettes når Vigilo sier det.
+- Bekreftelsesdialogen viser alle fakta først, én linje hver, og friteksten sist; bare friteksten kortes ned. Ikke prøvd mot den ekte tjenesten ennå.
+
 ## 0.5.0 (2026-11-25)
 
 - Sending som må slås på med `VIGILO_ALLOW_SEND=1`: svare i en tråd, skrive til ansatte, melde fravær på skole eller AKS/SFO, slette et fravær, legge til eller slette en hentemelding på AKS/SFO, velge en møtetid og merke en tråd som lest. Alt som sendes, går i to steg: et `prepare_…`-verktøy, så `send_prepared` med en engangskode. `send_prepared` trenger `summary` fra prepare-verktøyet, og klienter som støtter bekreftelsesdialoger, spør forelderen der. En sending uten tydelig svar meldes som mulig sendt. Sendte, mislykkede og usikre forsøk logges i `.data/sent.jsonl`. Ikke prøvd mot den ekte tjenesten ennå.
